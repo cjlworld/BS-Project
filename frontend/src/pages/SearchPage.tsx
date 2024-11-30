@@ -16,6 +16,10 @@ function SearchPage() {
     <>
       <NavBar></NavBar>
 
+      <div className="w-full flex justify-center">
+        <img src="./logo.svg" alt="Your Image" className="max-w-full max-h-60" />
+      </div>
+
       {/* Search Bar */}
       <div className=" mx-auto w-full flex justify-center mt-5"> 
         <input type="text" placeholder="Type here" className="input input-bordered w-full max-w-lg" />

@@ -26,8 +26,24 @@ class BrowserPagePool:
     async def start(self):
         # 使用一个浏览器单例，避免每次都重新启动浏览器
         self.playwright = await async_playwright().start()
-        self.browser = await self.playwright.firefox.launch(headless=True)
-        self.context = await self.browser.new_context()
+        self.browser = await self.playwright.chromium.launch(headless=False)
+        
+        # 设置浏览器上下文参数，模拟真实浏览器
+        context_params = {
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "viewport": {"width": 1920, "height": 1080},
+            "locale": "zh-CN",
+            "geolocation": {"latitude": 39.9042, "longitude": 116.4074},  # 北京的地理位置
+            "permissions": ["geolocation"],
+            "timezone_id": "Asia/Shanghai",
+            "accept_downloads": False,
+            "ignore_https_errors": False,
+            "bypass_csp": False,
+            "extra_http_headers": {
+                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            },
+        }
+        self.context = await self.browser.new_context(**context_params)
 
     async def add_cookies(self, cookies):
         for cookie in cookies:
@@ -83,7 +99,7 @@ async def get_html(url):
 
     await page.goto(url)
 
-    await page.wait_for_load_state("load")
+    await page.wait_for_load_state('load')
     html_content = await page.content()
 
     # 归还回页面
@@ -133,8 +149,7 @@ async def get_search_pages_taobao(url):
 
     # 归还回页面
     browser_page_pool.return_page(page)
-
-
+    
 def parse_search_page_taobao(html_content: str):
     """
     解析淘宝商品列表页，返回一个列表，每个元素是一个字典
@@ -142,8 +157,9 @@ def parse_search_page_taobao(html_content: str):
     能在商品列表页找到的信息有：
     1. 商品名称
     2. 商品价格
-    3. 商品详情页链接 / 唯一 ID
-    4. 商品卡片图片链接（这个只有加载好的元素有）
+    3. 商品详情页链接 
+    4. 唯一 ID（在详情页链接中有体现，不过为了方便查询，单独存一个字段）
+    5. 商品卡片图片链接（这个只有加载好的元素有）
 
     只返回 ID 列表，其余信息通过详情页抓取
     """
@@ -193,11 +209,52 @@ async def search_in_taobao(sentence: str):
         yield result
 
 
+async def parse_search_page_jd(html_content: str):
+    """
+    京东可以很轻易得获取到
+    1. 商品名称
+    2. 商品价格
+    3. 商品详情页链接
+    4. 唯一 ID
+    5. 商品卡片图片链接
+    因此返回一个字典列表，每个字典包含一个商品的这些信息
+    """
+    with open("test.html", "w", encoding='utf-8') as f:
+        f.write(html_content)
+    
+    soup = BeautifulSoup(html_content, "html.parser")
+    for item in soup.find_all("div", class_="gl-i-wrap"):
+        print(item)
+        product = {}
+        product['img'] = item.find("img", attrs={'data-lazy-img': True})['img']
+        print(f'img = {product["img"]}')
+    return []
+
+async def search_in_jd(sentence: str):
+    # 使用 jieba 分词
+    keyword = " ".join(jieba.lcut(sentence))
+    print(f"Searching for: {keyword}")
+    
+    # 并行爬取，顺序返回
+    urls = [f"https://search.jd.com/Search?keyword={keyword}&page={i}" for i in range(1, 6)]
+    tasks = [asyncio.create_task(get_html(url)) for url in urls]
+    
+    # 构造搜索链接 
+    for task in tasks:        
+        html_content = await task
+        result = await parse_search_page_jd(html_content)
+        
+        print(f"Got {len(result)} results from page")
+        yield result
+
 async def main():
     await browser_page_pool.start()
     await browser_page_pool.add_cookies(cookies)
 
-    async for result in search_in_taobao('111'):
+    # async for result in search_in_taobao('111'):
+    #     print(result)
+    
+    async for result in search_in_jd('111'):
         print(result)
 
     await browser_page_pool.close()
