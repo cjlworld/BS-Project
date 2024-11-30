@@ -26,7 +26,7 @@ class BrowserPagePool:
     async def start(self):
         # 使用一个浏览器单例，避免每次都重新启动浏览器
         self.playwright = await async_playwright().start()
-        self.browser = await self.playwright.chromium.launch(headless=False)
+        self.browser = await self.playwright.firefox.launch(headless=True)
         self.context = await self.browser.new_context()
 
     async def add_cookies(self, cookies):
@@ -108,21 +108,34 @@ async def get_search_pages_taobao(url):
     await page.goto(url)
 
     for i in range(PAGES_COUNT):
-        await page.wait_for_load_state("load")
-        html_content = await page.content()
-        yield html_content
-
-        # 点击下一页
-        next_button = await page.query_selector(NEXT_BUTTON_CLASS)
-        if not next_button:
+        try:
+            # 等待，直到下一个 button 出现
+            # 使用 wait_fot_load_state 会出现问题
+            await page.wait_for_selector(NEXT_BUTTON_CLASS, timeout=5000)
+            # await page.wait_for_load_state('load')
+            
+            # 点击下一页
+            next_button = await page.query_selector(NEXT_BUTTON_CLASS)
+            if not next_button:
+                print('No next button found')
+                break
+            
+            # 将鼠标放在 next_button 上
+            next_button.hover()
+            
+            html_content = await page.content()
+            yield html_content
+            
+            await next_button.click()
+        except Exception as e:
+            print(f"Error occurred: {e}")
             break
-        await next_button.click()
 
     # 归还回页面
     browser_page_pool.return_page(page)
 
 
-def parse_search_page_taobao(html_content):
+def parse_search_page_taobao(html_content: str):
     """
     解析淘宝商品列表页，返回一个列表，每个元素是一个字典
 
@@ -136,6 +149,10 @@ def parse_search_page_taobao(html_content):
     """
     # Parse the HTML content using BeautifulSoup
     soup = BeautifulSoup(html_content, "html.parser")
+    
+    with open("test.html", "w", encoding='utf-8') as f:
+        f.write(html_content)
+    print(f'len(html_content) = {len(html_content)}')
 
     result = []
     for item in soup.find_all("a", class_=re.compile("wrapper--*")):
@@ -144,6 +161,15 @@ def parse_search_page_taobao(html_content):
         query_params = parse_qs(parsed_url.query)
         # print("Query Params:", query_params)
         result.append(query_params["id"])
+    
+    for item in soup.find_all("a", class_=re.compile("doubleCardWrapper*")):
+        url = item["href"]
+        parsed_url = urlparse(url)
+        query_params = parse_qs(parsed_url.query)
+        # print("Query Params:", query_params)
+        result.append(query_params["id"])
+        
+        
     return result
 
 
@@ -171,7 +197,7 @@ async def main():
     await browser_page_pool.start()
     await browser_page_pool.add_cookies(cookies)
 
-    async for result in search_in_taobao("手机"):
+    async for result in search_in_taobao('111'):
         print(result)
 
     await browser_page_pool.close()
