@@ -1,1 +1,3 @@
 cookies.json
+*.pyc
+*.html
