@@ -2,6 +2,7 @@ import asyncio
 import json
 import re
 import time
+from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 
 import jieba
@@ -31,7 +32,7 @@ class BrowserPagePool:
         # 设置浏览器上下文参数，模拟真实浏览器
         context_params = {
             "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "viewport": {"width": 1920, "height": 1080},
+            "viewport": {"width": 1240, "height": 780},
             "locale": "zh-CN",
             "geolocation": {"latitude": 39.9042, "longitude": 116.4074},  # 北京的地理位置
             "permissions": ["geolocation"],
@@ -61,9 +62,48 @@ class BrowserPagePool:
         # 新增一个 page 用于抓取页面
         start_time = time.time()
         page = await self.context.new_page()
+        
+        # 0. 伪装, 禁用 Webdriver 标记
+        await page.evaluate("""
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => false
+            });
+        """)
         print(f"Time taken: {time.time() - start_time} seconds")
 
         start_time = time.time()
+        
+        # 1. 设置 window.navigator.chrome
+        # await page.evaluate("""
+        #     window.navigator.chrome = {
+        #         runtime: {},
+        #         // etc.
+        #     };
+        # """)
+
+        # 2. 绕过 navigator.permissions.query 检测
+        # await page.evaluate("""
+        #     const originalQuery = window.navigator.permissions.query;
+        #     window.navigator.permissions.query = (parameters) => (
+        #         (parameters != null && parameters.name === 'notifications') ?
+        #             Promise.resolve({ state: Notification.permission }) :
+        #             originalQuery(parameters)
+        #     );
+        # """)
+
+        # 3. 绕过 navigator.plugins.length 检测
+        await page.evaluate("""
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [1, 2, 3, 4, 5],
+            });
+        """)
+
+        # 4. 绕过 navigator.languages 检测
+        await page.evaluate("""
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['en-US', 'en'],
+            });
+        """)
 
         # 禁用图片加载
         async def block_images(route, request):
@@ -73,6 +113,7 @@ class BrowserPagePool:
                 await route.continue_()
 
         await page.route("**/*", block_images)
+        
         print(f"Time taken: {time.time() - start_time} seconds")
         return page
 
@@ -88,7 +129,6 @@ browser_page_pool = BrowserPagePool()
 # Example cookies
 with open("cookies.json", "r") as f:
     cookies = json.load(f)
-
 
 async def get_html(url):
     """
@@ -106,6 +146,116 @@ async def get_html(url):
     browser_page_pool.return_page(page)
     return html_content
 
+
+# 定义格式化字符串
+formats = [
+    "%H:%M",         # 13:25
+    "%m-%d %H:%M",   # 11-29 16:42
+    "%Y-%m-%d"       # 2023-11-29
+]
+
+# 将时间字符串转换为 datetime 对象，没有的部分用当前时间补全
+def parse_time(time_str, formats, now):
+    for fmt in formats:
+        try:
+            # 尝试解析时间字符串
+            dt = datetime.strptime(time_str, fmt)
+            # 如果解析成功，补全缺失的部分
+            if "%Y" not in fmt:
+                dt = dt.replace(year=now.year)
+            if "%m" not in fmt or "%d" not in fmt:
+                dt = dt.replace(month=now.month, day=now.day)
+            return dt
+        except ValueError:
+            continue
+    raise ValueError(f"无法解析时间字符串: {time_str}")
+
+def parse_search_page_smzdm(html_content: str):
+    """
+    ### SMZDM 能爬到的信息
+    - 商品名: name
+    - 图片地址: img 
+    - 商品链接: good_url
+    - POST 链接: post_url
+    - 价格: price
+    - 平台: platform
+    - 时间（天）: time
+    """
+    soup = BeautifulSoup(html_content, "html.parser")
+    result = []
+    for item in soup.find_all("div", class_="feed-block z-hor-feed"):
+        good_btn = item.find("div", class_="feed-link-btn-inner")
+        if good_btn is None:
+            continue
+        
+        good_btna = good_btn.find("a")
+        if good_btna is None:
+            continue
+        
+        img = item.find("img")
+        if img is None:
+            continue
+        
+        post_btn = item.find("a", attrs={"target": "_blank", "title": True})
+        if post_btn is None:
+            continue
+        
+        price_tag = item.find("div", class_="z-highlight")
+        if price_tag is None:
+            continue
+        
+        extra_tag = item.find("span", class_="feed-block-extras")
+        if extra_tag is None:
+            continue
+            
+        platform_tag = extra_tag.find("span")
+        if platform_tag is None:
+            continue
+        
+        data = {}
+        data['img'] = img['src']
+        data['name'] = img['alt']
+        data['good_url'] = good_btna['href']
+        data['post_url'] = post_btn['href']
+        data['price'] = price_tag.text.strip()
+        time_str = extra_tag.contents[0].strip()
+        data['time'] = parse_time(time_str, formats, datetime.now())
+        data['platform'] = platform_tag.text.strip()
+        
+        result.append(data)
+        
+    return result
+    
+async def search_in_smzdm(sentence: str, page_num=5):
+    # 使用 jieba 分词
+    keyword = "".join(jieba.lcut(sentence))
+    print(f"Searching for: {keyword}")
+    
+    url = f"https://search.smzdm.com/?c=home&s={keyword}&v=b"
+    
+    for i in range(1, page_num + 1):
+        html_content = await get_html(f"{url}&p={i}")
+        result = parse_search_page_smzdm(html_content)
+        print(f"Got {len(result)} results from page")
+        yield result
+    
+async def main():
+    await browser_page_pool.start()
+    await browser_page_pool.add_cookies(cookies)
+
+    async for result in search_in_smzdm('111 111'):
+        print(result)
+        pass
+    
+    # response = requests.get(r'https://search.smzdm.com/?c=home&s=111&v=b')
+    # with open("req.html", "w", encoding='utf-8') as f:
+    #     f.write(response.text)
+        
+    await browser_page_pool.close()
+
+asyncio.run(main())
+
+# 下面的弃用了
 
 async def get_search_pages_taobao(url):
     """
@@ -137,7 +287,7 @@ async def get_search_pages_taobao(url):
                 break
             
             # 将鼠标放在 next_button 上
-            next_button.hover()
+            await next_button.hover()
             
             html_content = await page.content()
             yield html_content
@@ -188,7 +338,6 @@ def parse_search_page_taobao(html_content: str):
         
     return result
 
-
 async def search_in_taobao(sentence: str):
     """
     export function
@@ -207,7 +356,6 @@ async def search_in_taobao(sentence: str):
         result = parse_search_page_taobao(html_content)
         print(f"Got {len(result)} results from page")
         yield result
-
 
 async def parse_search_page_jd(html_content: str):
     """
@@ -236,7 +384,7 @@ async def search_in_jd(sentence: str):
     print(f"Searching for: {keyword}")
     
     # 并行爬取，顺序返回
-    urls = [f"https://search.jd.com/Search?keyword={keyword}&page={i}" for i in range(1, 6)]
+    urls = [f"https://search.jd.com/Search?keyword={keyword}&enc=utf-8&page={i}&wq={keyword}&pvid=f29bd2beb9de4f90bb2882972612540b" for i in range(1, 6)]
     tasks = [asyncio.create_task(get_html(url)) for url in urls]
     
     # 构造搜索链接 
@@ -246,18 +394,4 @@ async def search_in_jd(sentence: str):
         
         print(f"Got {len(result)} results from page")
         yield result
-
-async def main():
-    await browser_page_pool.start()
-    await browser_page_pool.add_cookies(cookies)
-
-    # async for result in search_in_taobao('111'):
-    #     print(result)
-    
-    async for result in search_in_jd('111'):
-        print(result)
-
-    await browser_page_pool.close()
-
-
-asyncio.run(main())
+        
