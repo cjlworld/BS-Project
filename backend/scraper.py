@@ -2,6 +2,7 @@ import asyncio
 import json
 import re
 import time
+from typing import List
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 
@@ -9,6 +10,7 @@ import jieba
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
+from utils import ScrapedData
 
 class BrowserPagePool:
     """
@@ -27,7 +29,7 @@ class BrowserPagePool:
     async def start(self):
         # 使用一个浏览器单例，避免每次都重新启动浏览器
         self.playwright = await async_playwright().start()
-        self.browser = await self.playwright.chromium.launch(headless=False)
+        self.browser = await self.playwright.chromium.launch(headless=True)
         
         # 设置浏览器上下文参数，模拟真实浏览器
         context_params = {
@@ -121,14 +123,9 @@ class BrowserPagePool:
         # 创建关闭任务后返回，不阻塞
         asyncio.create_task(page.close())
 
-
 # 全局单例
 # 只在第一次使用浏览器时初始化
 browser_page_pool = BrowserPagePool()
-
-# Example cookies
-with open("cookies.json", "r") as f:
-    cookies = json.load(f)
 
 async def get_html(url):
     """
@@ -170,7 +167,7 @@ def parse_time(time_str, formats, now):
             continue
     raise ValueError(f"无法解析时间字符串: {time_str}")
 
-def parse_search_page_smzdm(html_content: str):
+def parse_search_page_smzdm(html_content: str) -> List[ScrapedData]:
     """
     ### SMZDM 能爬到的信息
     - 商品名: name
@@ -212,16 +209,16 @@ def parse_search_page_smzdm(html_content: str):
         if platform_tag is None:
             continue
         
-        data = {}
-        data['img'] = img['src']
-        data['name'] = img['alt']
-        data['good_url'] = good_btna['href']
-        data['post_url'] = post_btn['href']
-        data['price'] = price_tag.text.strip()
-        time_str = extra_tag.contents[0].strip()
-        data['time'] = parse_time(time_str, formats, datetime.now())
-        data['platform'] = platform_tag.text.strip()
         
+        data = ScrapedData(
+            img=img['src'],
+            name=img['alt'],
+            url=good_btna['href'],
+            post_url=post_btn['href'],
+            price=price_tag.text.strip(),
+            time=parse_time(extra_tag.contents[0].strip(), formats, datetime.now()),
+            platform=platform_tag.text.strip()
+        )
         result.append(data)
         
     return result
@@ -233,15 +230,27 @@ async def search_in_smzdm(sentence: str, page_num=5):
     
     url = f"https://search.smzdm.com/?c=home&s={keyword}&v=b"
     
-    for i in range(1, page_num + 1):
-        html_content = await get_html(f"{url}&p={i}")
-        result = parse_search_page_smzdm(html_content)
-        print(f"Got {len(result)} results from page")
-        yield result
-    
-async def main():
+    try:
+        for i in range(1, page_num + 1):
+            html_content = await get_html(f"{url}&p={i}")
+            result = parse_search_page_smzdm(html_content)
+            print(f"Got {len(result)} results from page")
+            yield result
+
+    except Exception as e:
+        print(e)
+        return
+        
+async def init():
+    # Example cookies
+    with open("cookies.json", "r") as f:
+        cookies = json.load(f)
+        
     await browser_page_pool.start()
     await browser_page_pool.add_cookies(cookies)
+    
+async def main():
+    await init()
 
     async for result in search_in_smzdm('111 111'):
         print(result)
@@ -253,7 +262,8 @@ async def main():
         
     await browser_page_pool.close()
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
 
 # 下面的弃用了
 

@@ -1,19 +1,33 @@
+import asyncio
+from datetime import datetime
+
 from fastapi import FastAPI, Request, Security, Response, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_jwt import JwtAuthorizationCredentials, JwtAccessCookie
 from pydantic import BaseModel, EmailStr, ValidationError
 from typing import Annotated
-from sqlmodel import SQLModel, Field, create_engine, Session, select
+from sqlalchemy import select
 from passlib.context import CryptContext
 from contextlib import asynccontextmanager
+
+import scraper
+from models import User, Good, GoodHistory, Base 
+from utils import store_multi_scraped_data, store_single_scraped_data, post_url_to_post_id, ScrapedData
+
+from database import AsyncSessionLocal, engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时创建数据库表
-    SQLModel.metadata.create_all(engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)  # 创建所有表
+        
+    # 启动时初始化浏览器池
+    await scraper.init()
+    
     yield
     # 关闭时清理资源（如果有需要）
-    # 例如：关闭数据库连接
+    await scraper.browser_page_pool.close()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -31,26 +45,19 @@ access_security = JwtAccessCookie(
     auto_error=True
 )
 
-# 配置数据库连接
-DATABASE_URL = "mysql+pymysql://root:root@localhost:3307/bs"
-engine = create_engine(DATABASE_URL)
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-class User(SQLModel, table=True):
-    id: int = Field(default=None, primary_key=True)
-    email: EmailStr
-    username: str
-    password_hash: str
-    
-class UserLogin(BaseModel):
+class UserLoginRequest(BaseModel):
     email: EmailStr
     password: str
     
-class UserRegister(BaseModel):
+class UserRegisterRequest(BaseModel):
     email: EmailStr
     username: str
     password: str
+
+class GoodSearchRequest(BaseModel):
+    keyword: str
     
 def make_response(code: int = 0, msg: str = "", data = None): 
     return {
@@ -73,27 +80,29 @@ def http_exception_handler(request: Request, exc: Exception):
     return make_response(1, "HTTPException", str(exc))
 
 @app.post('/api/user/login')
-def login(user: Annotated[UserLogin, Body()], response: Response):
-    with Session(engine) as session:
+async def login(user: Annotated[UserLoginRequest, Body()], response: Response):
+    async with AsyncSessionLocal() as session:
         statement = select(User).where(User.email == user.email)
-        result = session.exec(statement).first()
+        result = await session.execute(statement)
+        user_record = result.scalars().first()
         
-        if not result or not pwd_context.verify(user.password, result.password_hash):
+        if not user_record or not pwd_context.verify(user.password, user_record.password_hash):
             return make_response(1, "Invalid email or password")
         
         # Create the tokens
-        access_token = access_security.create_access_token(subject={"user_id": result.id})
+        access_token = access_security.create_access_token(subject={"user_id": user_record.id})
         # Set the JWT cookies in the response
         access_security.set_access_cookie(response, access_token)
         return make_success_response(access_token)
 
 @app.post('/api/user/register')
-def register(user: Annotated[UserRegister, Body()]):
-    with Session(engine) as session:
+async def register(user: Annotated[UserRegisterRequest, Body()]):
+    async with AsyncSessionLocal() as session:
         # Check if user already exists
         statement = select(User).where(User.email == user.email)
-        result = session.exec(statement).first()
-        if result:
+        result = await session.execute(statement)
+        user_record = result.scalars().first()
+        if user_record:
             return make_response(1, "User already exists")
         
         # Hash the password
@@ -102,11 +111,11 @@ def register(user: Annotated[UserRegister, Body()]):
         # Create new user
         new_user = User(email=user.email, username=user.username, password_hash=password_hash)
         session.add(new_user)
-        session.commit()
+        await session.commit()
     
     return make_success_response()
 
-@app.post('/refresh')
+@app.post('/api/user/refresh')
 def refresh(response: Response, credentials: JwtAuthorizationCredentials = Security(access_security)):
     user_id = credentials["user_id"]
     new_access_token = access_security.create_access_token(subject={"user_id": user_id})
@@ -114,7 +123,7 @@ def refresh(response: Response, credentials: JwtAuthorizationCredentials = Secur
     access_security.set_access_cookie(response, new_access_token)
     return make_success_response()
 
-@app.delete('/api/user/logout')
+@app.post('/api/user/logout')
 def logout(response: Response):
     """
     用户登出
@@ -122,7 +131,7 @@ def logout(response: Response):
     access_security.unset_jwt_cookies(response)
     return make_success_response()
 
-@app.get('/protected')
+@app.post('/protected')
 def protected(credentials: JwtAuthorizationCredentials = Security(access_security)):
     """
     We do not need to make any changes to our protected endpoints. They
@@ -132,3 +141,15 @@ def protected(credentials: JwtAuthorizationCredentials = Security(access_securit
     user_id = credentials["user_id"]
     
     return make_success_response({"user_id": user_id})
+
+
+@app.post('/api/good/search')
+async def search(search_req: Annotated[GoodSearchRequest, Body()]):
+    keyword = search_req.keyword
+    
+    results = []
+    async for result in scraper.search_in_smzdm(keyword):
+        asyncio.create_task(store_multi_scraped_data(result))
+        results.extend(result)
+        
+    return make_success_response({"goods": results})
