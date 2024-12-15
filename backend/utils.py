@@ -74,6 +74,16 @@ async def store_single_scraped_data(data: ScrapedData):
         if len(price) == 0:
             return
         
+        # 查找是否存在时间一样，商品一样的记录
+        first_history = await session.execute(
+            select(GoodHistory)
+            .filter(GoodHistory.good_id == good.id)
+            .filter(GoodHistory.time == data.time)
+        )
+        first_history = first_history.first()
+        if first_history is not None:
+            return
+        
         good_history = GoodHistory(
             good_id=good.id,
             price=price[0],

@@ -6,12 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_jwt import JwtAuthorizationCredentials, JwtAccessCookie
 from pydantic import BaseModel, EmailStr, ValidationError
 from typing import Annotated
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from passlib.context import CryptContext
 from contextlib import asynccontextmanager
 
 import scraper
-from models import User, Good, GoodHistory, Base 
+from models import User, Good, GoodHistory, Base, Subscription
 from utils import (
     store_multi_scraped_data, 
     store_single_scraped_data, 
@@ -21,6 +21,9 @@ from utils import (
 )
 
 from database import AsyncSessionLocal, engine
+import loguru
+
+logger = loguru.logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -137,17 +140,6 @@ def logout(response: Response):
     access_security.unset_jwt_cookies(response)
     return make_success_response()
 
-@app.post('/protected')
-def protected(credentials: JwtAuthorizationCredentials = Security(access_security)):
-    """
-    We do not need to make any changes to our protected endpoints. They
-    will all still function the exact same as they do when sending the
-    JWT in via a headers instead of a cookies
-    """
-    user_id = credentials["user_id"]
-    
-    return make_success_response({"user_id": user_id})
-
 
 @app.post('/api/good/search')
 async def search(search_req: Annotated[GoodSearchRequest, Body()]):
@@ -170,3 +162,132 @@ async def search(search_req: Annotated[GoodSearchRequest, Body()]):
         response.append(item)
         
     return make_success_response({"goods": response})
+
+
+class GoodDetailRequest(BaseModel):
+    post_id: str
+
+@app.post('/api/good/detail') 
+async def handle_good_detail(req: GoodDetailRequest):
+    async with AsyncSessionLocal() as session:
+        good_details = await session.execute(
+            select(Good).filter(Good.post_id == req.post_id)
+        )
+        good = good_details.scalars().first()
+        
+        if good is None:
+            return make_response(code=1, msg="商品不存在")
+        
+        logger.info(f"good detail: post_id = {good.post_id}, url = {good.url}, name = {good.name}, img = {good.img}, platform = {good.platform}")
+        
+        # 从 good_history 中获取最新的价格和时间
+        latest_price_time = await session.execute(
+            select(GoodHistory.price, GoodHistory.time)
+            .filter(GoodHistory.good_id == good.id)
+            .order_by(GoodHistory.time.desc())
+            .limit(1)
+        )
+        latest_price_time = latest_price_time.first()
+        if latest_price_time is None:
+            return make_response(code=1, msg="No price found")
+        good.price, good.time = latest_price_time
+        return make_success_response(good)
+    
+    
+class GoodHistoryRequest(BaseModel):
+    post_id: str
+
+@app.post('/api/good/history')
+async def handle_good_history(req: GoodHistoryRequest):
+    post_id = req.post_id
+    async with AsyncSessionLocal() as session:
+        good = await session.execute(
+            select(Good).filter(Good.post_id == post_id)
+        )
+        good = good.scalars().first()
+        if good is None:
+            return make_response(code=1, msg="No good found")
+        
+        logger.info(f"good found: {good}")
+        
+        # 查找与商品名字相近的历史价格
+        history = await session.execute(
+            select(GoodHistory, Good)
+            .join(Good, GoodHistory.good_id == Good.id)
+            .where(Good.name.like(f"%{good.name}%"))
+            .order_by(GoodHistory.time.desc())
+        )
+        history = history.all()
+        
+        # 如果没有找到历史价格，返回提示
+        if not history:
+            return make_response(code=1, msg="No history found")
+        
+        # 返回历史价格数据
+        return make_response(data=[
+            {
+                "price": history.price,
+                "time": history.time,
+                "post_id": good.post_id
+            }
+            for history, good in history
+        ])
+        
+        
+class SubscriptionRequest(BaseModel):
+    good_post_id: str
+
+# 订阅商品
+@app.post('/api/subscription/add')
+async def add_subscription(req: SubscriptionRequest, credentials: JwtAuthorizationCredentials = Security(access_security)):
+    user_id = credentials["user_id"]
+    
+    async with AsyncSessionLocal() as session:
+        subscription = Subscription(
+            good_post_id=req.good_post_id,
+            user_id=user_id
+        )
+        session.add(subscription)
+        await session.commit()
+
+# 取消订阅
+@app.post('/api/subscription/cancel')
+async def cancel_subscription(req: SubscriptionRequest, credentials: JwtAuthorizationCredentials = Security(access_security)):
+    user_id = credentials["user_id"]
+    
+    async with AsyncSessionLocal() as session:
+        await session.execute(
+            delete(Subscription)
+            .where(
+                Subscription.user_id == user_id,
+                Subscription.good_post_id == req.good_post_id
+            )
+        )
+        await session.commit()
+
+# 查看订阅
+@app.post('/api/subscription/get')
+async def get_subscription(req: SubscriptionRequest, credentials: JwtAuthorizationCredentials = Security(access_security)):
+    user_id = credentials["user_id"]
+    
+    async with AsyncSessionLocal() as session:
+        query = await session.execute(
+            select(Subscription).filter(
+                Subscription.user_id == user_id
+            )
+        )
+        subscriptions = query.scalars().all()
+        
+        return [subscription.good_post_id for subscription in subscriptions]
+
+
+@app.post('/protected')
+def protected(credentials: JwtAuthorizationCredentials = Security(access_security)):
+    """
+    We do not need to make any changes to our protected endpoints. They
+    will all still function the exact same as they do when sending the
+    JWT in via a headers instead of a cookies
+    """
+    user_id = credentials["user_id"]
+    
+    return make_success_response({"user_id": user_id})
