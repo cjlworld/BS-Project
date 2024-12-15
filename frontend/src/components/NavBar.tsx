@@ -78,13 +78,20 @@ function NavBar() {
             </svg>
             <span className="badge badge-xs badge-primary indicator-item"></span>
           </div>
+          我的订阅
         </button>
-        <a
+        <button
+          className="btn btn-ghost text-md"
+          onClick={() => navigate("/login")}
+        >
+          登出
+        </button>
+        <button
           className="btn btn-ghost text-md"
           onClick={() => navigate("/login")}
         >
           登录
-        </a>
+        </button>
         <button
           className="btn btn-ghost text-md"
           onClick={() => navigate("/signup")}
