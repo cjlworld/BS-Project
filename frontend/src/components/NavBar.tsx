@@ -79,12 +79,12 @@ function NavBar() {
             <span className="badge badge-xs badge-primary indicator-item"></span>
           </div>
         </button>
-        <button
+        <a
           className="btn btn-ghost text-md"
           onClick={() => navigate("/login")}
         >
           登录
-        </button>
+        </a>
         <button
           className="btn btn-ghost text-md"
           onClick={() => navigate("/signup")}

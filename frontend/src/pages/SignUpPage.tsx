@@ -1,8 +1,10 @@
-import NavBar from "../components/NavBar";
 import useSWRMutation from "swr/mutation";
-import { postFetcher } from "../utils";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+import NavBar from "../components/NavBar";
+import PageLayout from "../components/PageLayout";
+import { postFetcher } from "../utils";
 
 interface SignUpRequest {
   email: string;
@@ -97,12 +99,13 @@ function SignUpCard() {
 
 function SignUpPage() {
   return (
-    <div className="flex flex-col h-screen justify-center">
-      <NavBar></NavBar>
-      <div className="flex justify-center my-auto">
-        <SignUpCard></SignUpCard>
+    <PageLayout>
+      <div className="flex flex-col flex-grow justify-center">
+        <div className="flex justify-center my-auto">
+          <SignUpCard></SignUpCard>
+        </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import NavBar from "../components/NavBar";
 import { postFetcher } from "../utils";
+import PageLayout from "../components/PageLayout";
 
 interface LoginRequest {
   email: string;
@@ -75,14 +76,14 @@ function LoginCard() {
 
 
 function LoginPage() {
-
   return (
-    <div className="flex flex-col h-screen justify-center">
-      <NavBar></NavBar>
-      <div className="flex justify-center my-auto">
-        <LoginCard></LoginCard>
+    <PageLayout>
+      <div className="flex flex-col justify-center flex-grow">
+        <div className="flex justify-center my-auto">
+          <LoginCard></LoginCard>
+        </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }
 

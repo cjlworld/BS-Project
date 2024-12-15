@@ -7,6 +7,7 @@ import { postFetcher } from "../utils";
 
 import type { Good } from "../types";
 import { useSearchParams } from "react-router-dom";
+import PageLayout from "../components/PageLayout";
 
 interface SearchResponse {
   goods: Good[];
@@ -64,8 +65,7 @@ function SearchPage() {
   });
 
   return (
-    <>
-      <NavBar />
+    <PageLayout>
       <div className="w-full flex justify-center">
         <img src="./logo.svg" alt="Your Image" className="max-w-full max-h-60" />
       </div>
@@ -96,7 +96,7 @@ function SearchPage() {
           goodCardList
         )}
       </div>
-    </>
+    </PageLayout>
   );
 }
 
