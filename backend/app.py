@@ -12,7 +12,13 @@ from contextlib import asynccontextmanager
 
 import scraper
 from models import User, Good, GoodHistory, Base 
-from utils import store_multi_scraped_data, store_single_scraped_data, post_url_to_post_id, ScrapedData
+from utils import (
+    store_multi_scraped_data, 
+    store_single_scraped_data, 
+    post_url_to_post_id, 
+    extract_float,
+    ScrapedData
+)
 
 from database import AsyncSessionLocal, engine
 
@@ -151,5 +157,16 @@ async def search(search_req: Annotated[GoodSearchRequest, Body()]):
     async for result in scraper.search_in_smzdm(keyword):
         asyncio.create_task(store_multi_scraped_data(result))
         results.extend(result)
+    
+    response = []
+    for good in results:
+        item = good.dict()
+        prices = extract_float(good.price)
+        if len(prices) == 0:
+            continue
+        item['price'] = prices[0]
+        item['post_id'] = post_url_to_post_id(good.post_url)
+        del item['post_url']
+        response.append(item)
         
-    return make_success_response({"goods": results})
+    return make_success_response({"goods": response})

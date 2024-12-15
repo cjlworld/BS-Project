@@ -40,7 +40,7 @@ function NavBar() {
         </div>
       </div>
       <div className="navbar-center">
-        <a className="btn btn-ghost text-xl">daisyUI</a>
+        <a className="btn btn-ghost text-xl">启真智选</a>
       </div>
       <div className="navbar-end">
         <button className="btn btn-ghost text-md" onClick={() => navigate("/")}>
