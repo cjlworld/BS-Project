@@ -17,6 +17,12 @@ importers:
       antd:
         specifier: ^5.22.5
         version: 5.22.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      jotai:
+        specifier: ^2.10.3
+        version: 2.10.3(@types/react@18.3.12)(react@18.3.1)
+      jotai-utils:
+        specifier: ^0.0.0
+        version: 0.0.0
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1766,6 +1772,21 @@ packages:
   jiti@1.21.6:
     resolution: {integrity: sha512-2yTgeWTWzMWkHu6Jp9NKgePDaYHbntiwvYuuJLbbN9vl7DC9DvXKOB2BC3ZZ92D3cvV/aflH0osDfwpHepQ53w==}
     hasBin: true
+
+  jotai-utils@0.0.0:
+    resolution: {integrity: sha512-z/gS7iuWWwXY/JnvsYmcDpcFLnDsJVqkIFJ66h060LY5+cte8S7SDKEVEFPcoM6UQjyy3mj6eEKjcxb1+7OqZw==}
+
+  jotai@2.10.3:
+    resolution: {integrity: sha512-Nnf4IwrLhNfuz2JOQLI0V/AgwcpxvVy8Ec8PidIIDeRi4KCFpwTFIpHAAcU+yCgnw/oASYElq9UY0YdUUegsSA==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=17.0.0'
+      react: '>=17.0.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      react:
+        optional: true
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -4780,6 +4801,13 @@ snapshots:
       supports-color: 8.1.1
 
   jiti@1.21.6: {}
+
+  jotai-utils@0.0.0: {}
+
+  jotai@2.10.3(@types/react@18.3.12)(react@18.3.1):
+    optionalDependencies:
+      '@types/react': 18.3.12
+      react: 18.3.1
 
   js-tokens@4.0.0: {}
 

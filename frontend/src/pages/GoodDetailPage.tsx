@@ -1,4 +1,3 @@
-import React from "react";
 import useSWR from "swr";
 import { useParams } from "react-router-dom";
 import { Table } from 'antd';
@@ -6,17 +5,8 @@ import { Line } from '@ant-design/plots';
 
 import { postFetcher } from "../utils";
 import PageLayout from "../components/PageLayout";
-
-// 假设商品信息的类型定义
-interface Good {
-  post_id: string;
-  name: string;
-  url: string;
-  platform: string;
-  price: number;
-  time: string;
-  img: string;
-}
+// import GoodCard from "../components/GoodCard";
+import GoodDetailCard from "../components/GoodDetailCard";
 
 interface HistoryData {
   post_id: string;
@@ -26,33 +16,31 @@ interface HistoryData {
 
 type GoodHistoryResponse = HistoryData[];
 
-function GoodDetail() {
+function GoodDetailPage() {
   const { id: post_id } = useParams<{ id: string }>(); // 获取路由参数
 
-  // 使用 SWR 获取商品信息
-  const { data: detailData, error: detailError, isLoading: detailIsLoading } = useSWR<Good>(
-    "/api/good/detail", 
-    async (key: string) => postFetcher<Good>(key, {arg: { post_id }}) // 使用柯里化封装一个 post fetcher
-  );
+  if (!post_id) {
+    return <div>Invalid post ID</div>;
+  }
 
   // 使用 SWR 获取历史信息
   const { data: historyData, error: historyError, isLoading: historyIsLoading } = useSWR<GoodHistoryResponse>(
-    "/api/good/history", 
-    async (key: string) => postFetcher<GoodHistoryResponse>(key, {arg: { post_id }})
+    ["/api/good/history", post_id],
+    async ([url, post_id]) => postFetcher<GoodHistoryResponse>(url, {arg: { post_id: post_id }})
   );
 
   // 处理加载状态
-  if (detailIsLoading || historyIsLoading) {
+  if (historyIsLoading) {
     return <div className="text-center mt-8">Loading...</div>;
   }
 
   // 处理错误状态
-  if (detailError || historyError) {
+  if (historyError) {
     return <div className="text-center mt-8">Failed to load data.</div>;
   }
 
   // 如果没有数据，返回提示
-  if (!detailData || !historyData) {
+  if (!historyData) {
     return <div className="text-center mt-8">No data found.</div>;
   }
 
@@ -102,28 +90,16 @@ function GoodDetail() {
     },
   };
 
+  // const uniquePostIds = Array.from(new Set(historyData.map((item) => item.post_id)));
+  // const relatedGoodList = uniquePostIds.map((postId) => ( 
+  //   <GoodCard key={postId} post_id={postId} />
+  // ));
+
   return (
     <PageLayout>
       <div className="container mx-auto p-8">
-        <div className="card lg:card-side bg-base-100 shadow-xl">
-          <figure>
-            <img
-              src={`https:${detailData.img}`}
-              alt={detailData.name}
-              referrerPolicy="no-referrer"
-              className="w-96 h-auto"
-            />
-          </figure>
-          <div className="card-body">
-            <h2 className="card-title text-2xl">{detailData.name}</h2>
-            <p className="text-gray-600">{detailData.platform}</p>
-            <p className="text-xl font-bold">￥{detailData.price}</p>
-            <p className="text-gray-500">{detailData.time}</p>
-            <div className="card-actions justify-end">
-              <a href={detailData.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">链接直达</a>
-            </div>
-          </div>
-        </div>
+        {/* 商品详情 */}
+        <GoodDetailCard post_id={post_id} />
 
         {/* 折线图 */}
 
@@ -142,9 +118,15 @@ function GoodDetail() {
           <Table dataSource={historyData} columns={columns} rowKey="time" />
         </div>
 
+        {/* 相关商品 */}
+        {/* <div className="mt-8">
+          <h3 className="text-xl font-bold mb-4">相关商品</h3>
+          
+        </div> */}
+
       </div>
     </PageLayout>
   );
 }
 
-export default GoodDetail;
+export default GoodDetailPage;

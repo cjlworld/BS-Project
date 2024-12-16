@@ -3,6 +3,7 @@ from datetime import datetime
 
 from fastapi import FastAPI, Request, Security, Response, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi_jwt import JwtAuthorizationCredentials, JwtAccessCookie
 from pydantic import BaseModel, EmailStr, ValidationError
 from typing import Annotated
@@ -54,7 +55,7 @@ access_security = JwtAccessCookie(
     auto_error=True
 )
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 class UserLoginRequest(BaseModel):
     email: EmailStr
@@ -81,12 +82,17 @@ def make_success_response(data = None):
 # 处理 Pydantic 验证错误
 @app.exception_handler(ValidationError)
 async def validation_exception_handler(request: Request, exc: ValidationError):
-    return make_response(1, "Pydantic validation error", exc.errors())
-
+    return JSONResponse(
+        status_code=200,
+        content=make_response(1, "Validation error", exc.errors())
+    )
 # 处理 JWT 认证错误
 @app.exception_handler(HTTPException)
 def http_exception_handler(request: Request, exc: Exception):
-    return make_response(1, "HTTPException", str(exc))
+    return JSONResponse(
+        status_code=200,
+        content=make_response(exc.status_code, exc.detail)
+    )
 
 @app.post('/api/user/login')
 async def login(user: Annotated[UserLoginRequest, Body()], response: Response):
@@ -125,20 +131,18 @@ async def register(user: Annotated[UserRegisterRequest, Body()]):
     return make_success_response()
 
 @app.post('/api/user/refresh')
-def refresh(response: Response, credentials: JwtAuthorizationCredentials = Security(access_security)):
-    user_id = credentials["user_id"]
-    new_access_token = access_security.create_access_token(subject={"user_id": user_id})
-    # Set the JWT cookies in the response
-    access_security.set_access_cookie(response, new_access_token)
-    return make_success_response()
+async def refresh(response: Response, credentials: JwtAuthorizationCredentials = Security(access_security)):
+    access_token = access_security.create_refresh_token(subject=credentials.subject)
+    access_security.set_refresh_cookie(response, access_token)
+    return make_success_response(data={})
 
 @app.post('/api/user/logout')
 def logout(response: Response):
     """
     用户登出
     """
-    access_security.unset_jwt_cookies(response)
-    return make_success_response()
+    access_security.unset_access_cookie(response)
+    return make_success_response(data={})
 
 
 @app.post('/api/good/search')
@@ -249,6 +253,7 @@ async def add_subscription(req: SubscriptionRequest, credentials: JwtAuthorizati
         )
         session.add(subscription)
         await session.commit()
+        return make_success_response(data={})
 
 # 取消订阅
 @app.post('/api/subscription/cancel')
@@ -264,22 +269,39 @@ async def cancel_subscription(req: SubscriptionRequest, credentials: JwtAuthoriz
             )
         )
         await session.commit()
+        return make_success_response(data={})
 
-# 查看订阅
+# 查看所有订阅
 @app.post('/api/subscription/get')
-async def get_subscription(req: SubscriptionRequest, credentials: JwtAuthorizationCredentials = Security(access_security)):
+async def get_subscription(credentials: JwtAuthorizationCredentials = Security(access_security)):
+    user_id = credentials["user_id"]
+    
+    async with AsyncSessionLocal() as session:
+        query = await session.execute(
+            select(Subscription.good_post_id)
+            .filter(Subscription.user_id == user_id)
+        )
+        
+        return make_success_response(query.scalars().all())
+
+# 查看是否订阅
+@app.post('/api/subscription/check')
+async def check_subscription(req: SubscriptionRequest, credentials: JwtAuthorizationCredentials = Security(access_security)):
     user_id = credentials["user_id"]
     
     async with AsyncSessionLocal() as session:
         query = await session.execute(
             select(Subscription).filter(
-                Subscription.user_id == user_id
+                Subscription.user_id == user_id,
+                Subscription.good_post_id == req.good_post_id
             )
         )
-        subscriptions = query.scalars().all()
+        query = query.scalars().first()
         
-        return [subscription.good_post_id for subscription in subscriptions]
-
+        if query is None:
+            return make_success_response({"is_subscribed": False})
+        else:
+            return make_success_response({"is_subscribed": True})
 
 @app.post('/protected')
 def protected(credentials: JwtAuthorizationCredentials = Security(access_security)):

@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import useSWRMutation from "swr/mutation";
 
 import GoodCard from "../components/GoodCard";
-import NavBar from "../components/NavBar";
 import { postFetcher } from "../utils";
 
 import type { Good } from "../types";
@@ -22,7 +21,7 @@ function SearchPage() {
   const [keyword, setKeyword] = useState("");
 
   // 使用 SWR 获取数据
-  const { data, error, trigger, reset, isMutating } = useSWRMutation<SearchResponse, Error, string, SearchResquest>(
+  const { data, error, trigger, isMutating } = useSWRMutation<SearchResponse, Error, string, SearchResquest>(
     '/api/good/search', 
     postFetcher
   );
@@ -81,14 +80,14 @@ function SearchPage() {
             setKeyword(e.target.value);
           }}
         />
-        <button className="btn btn-outline mx-5" onClick={handleSearch}>
+        <button className="btn btn-outline mx-5" disabled={keyword.length === 0 || isMutating} onClick={handleSearch}>
           Search
         </button>
       </div>
 
       {/* Cards */}
       <div className="flex flex-wrap justify-around p-12">
-        {error ? (
+        {error && !isMutating ? (
           <div className="text-red-500">Failed to load data</div>
         ) : (!data && isMutating) ? (
           <div className="text-gray-500 mt-5">Loading...</div>

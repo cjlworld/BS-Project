@@ -3,11 +3,12 @@
 const prefix: string = "http://localhost:8000";
 
 export async function getFetcher<T>(key: string): Promise<T> {
-  const resp = await fetch(prefix + key, { mode: "cors" }).then((res) =>
-    res.json()
-  );
+  const resp = await fetch(prefix + key, {
+    mode: "cors", // 跨域请求
+    credentials: "include", // 允许跨域携带 cookie
+  }).then((res) => res.json());
   if (resp.code !== 0) {
-    throw new Error(resp.message + resp.code);
+    throw new Error(`${resp.code}, ${resp.msg}`);
   }
   return resp.data;
 }
@@ -22,7 +23,8 @@ export async function postFetcher<T>(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body.arg),
-    mode: "cors",
+    mode: "cors", // 跨域请求
+    credentials: "include", // 允许跨域携带 cookie
   }).then((res) => res.json());
   if (resp.code !== 0) {
     throw new Error(`${resp.code}, ${resp.msg}`);

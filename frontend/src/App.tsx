@@ -4,6 +4,7 @@ import SearchPage from "./pages/SearchPage";
 import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
 import GoodDetailPage from "./pages/GoodDetailPage";
+import SubscriptionPage from "./pages/SubscriptionPage";
 
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
         <Route path="/login" Component={LoginPage} />
         <Route path="/signup" Component={SignUpPage} />
         <Route path="/good-detail/:id" Component={GoodDetailPage} />
+        <Route path="/subscription" Component={SubscriptionPage} />
       </Routes>
     </HashRouter>
   );

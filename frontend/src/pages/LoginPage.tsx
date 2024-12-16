@@ -1,10 +1,11 @@
 import useSWRMutation from "swr/mutation"
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAtom } from "jotai";
 
-import NavBar from "../components/NavBar";
 import { postFetcher } from "../utils";
 import PageLayout from "../components/PageLayout";
+import { isLoginAtom } from "../store";
 
 interface LoginRequest {
   email: string;
@@ -16,6 +17,8 @@ function LoginCard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const [isLogin, setIsLogin] = useAtom(isLoginAtom);
+
   const navigate = useNavigate();
 
   const { trigger, error, isMutating } = useSWRMutation<null, Error, string, LoginRequest>(
@@ -23,10 +26,19 @@ function LoginCard() {
     postFetcher
   )
 
+  // 使用 useEffect 监听 isLogin 状态的变化，当 isLogin 为 true 时，跳转到首页
+  // 这样确保在登录成功后跳转至首页之前，store 中的 isLogin 状态已经更新为 true
+  useEffect(() => {
+    if (isLogin) {
+      navigate("/");
+    }
+  }, [isLogin]);
+
   const handleLogin = async () => {
     await trigger({ email, password } as LoginRequest);
     if (!error) {
-      navigate("/");
+      console.log("Login successful!");
+      setIsLogin(true);
     }
   }
 
