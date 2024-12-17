@@ -80,15 +80,21 @@ function SearchPage() {
       </div>
 
       {/* Cards */}
-      <div className="flex flex-wrap justify-around p-12">
+      <div className="w-full flex flex-col justify-center justify-items-center">
         {error && !isLoading ? (
           <div className="text-red-500">Failed to load data</div>
         ) : (!data && isLoading) ? (
-          <div className="text-gray-500 mt-5">Loading...</div>
+          <div className="text-gray-500 mt-5 mx-auto">Loading...</div>
         ) : (
-          goodCardList
+          <>
+            {isLoading && <div className="text-gray-500 mt-5 mx-auto">Loading...</div>}
+            <div className="flex flex-wrap justify-around p-12">
+              {goodCardList}
+            </div>
+          </>
         )}
       </div>
+      
     </PageLayout>
   );
 }

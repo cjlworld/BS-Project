@@ -213,6 +213,7 @@ async def handle_good_detail(req: GoodDetailRequest):
         if latest_price_time is None:
             return make_response(code=1, msg="No price found")
         good.price, good.time = latest_price_time
+        good.time = good.time.strftime("%Y-%m-%d %H:%M:%S")
         return make_success_response(good)
     
     
@@ -237,7 +238,7 @@ async def handle_good_history(req: GoodHistoryRequest):
             select(GoodHistory, Good)
             .join(Good, GoodHistory.good_id == Good.id)
             .where(Good.name.like(f"%{good.name}%"))
-            .order_by(GoodHistory.time.desc())
+            .order_by(GoodHistory.time.asc())
         )
         history = history.all()
         
@@ -249,7 +250,7 @@ async def handle_good_history(req: GoodHistoryRequest):
         return make_response(data=[
             {
                 "price": history.price,
-                "time": history.time,
+                "time": history.time.strftime("%Y-%m-%d %H:%M:%S"),
                 "post_id": good.post_id
             }
             for history, good in history

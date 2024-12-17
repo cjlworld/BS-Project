@@ -79,21 +79,14 @@ function GoodDetailPage() {
       size: 5,
       shape: 'circle',
     },
-    tooltip: {
-      showMarkers: true,
-      formatter: (datum: HistoryData) => {
-        return { name: 'Price', value: `￥${datum.price}` };
-      },
-    },
-    theme: {
-      background: 'white', // 设置背景颜色为白色
-    },
   };
 
   // const uniquePostIds = Array.from(new Set(historyData.map((item) => item.post_id)));
   // const relatedGoodList = uniquePostIds.map((postId) => ( 
   //   <GoodCard key={postId} post_id={postId} />
   // ));
+
+  const tableData = Array.from(historyData).reverse();
 
   return (
     <PageLayout>
@@ -115,7 +108,7 @@ function GoodDetailPage() {
         {/* 历史价格表格 */}
         <div className="mt-8">
           <h3 className="text-xl font-bold mb-4">历史价格</h3>
-          <Table dataSource={historyData} columns={columns} rowKey="time" />
+          <Table dataSource={tableData} columns={columns} rowKey="time" />
         </div>
 
         {/* 相关商品 */}
