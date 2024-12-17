@@ -1,4 +1,5 @@
 from sqlalchemy import select, update
+from loguru import logger
 
 import scraper
 from informer import send_email
@@ -104,6 +105,7 @@ async def check_new_price_for_all_user():
     """
     Check new price for all user
     """
+    logger.debug('start check new price for all user...')
     async with AsyncSessionLocal() as session:
         all_users = await session.execute(select(User.id))
         all_users = all_users.scalars().all()

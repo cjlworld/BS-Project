@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from datetime import datetime
 from pydantic import BaseModel
 from sqlalchemy import select
+from loguru import logger
 
 from models import Good, GoodHistory
 from database import AsyncSessionLocal
@@ -93,5 +94,9 @@ async def store_single_scraped_data(data: ScrapedData):
         await session.commit()
 
 async def store_multi_scraped_data(datas: list[ScrapedData]):
-    tasks = [store_single_scraped_data(data) for data in datas]
-    await asyncio.gather(*tasks)
+    logger.debug(f"store_multi_scraped_data len: {len(datas)}")
+    # 顺序插入，避免爆连接池
+    for data in datas:
+        await store_single_scraped_data(data)
+    # tasks = [store_single_scraped_data(data) for data in datas]
+    # await asyncio.gather(*tasks)

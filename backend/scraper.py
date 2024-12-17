@@ -5,10 +5,12 @@ import time
 from typing import List
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
+import traceback
 
 import jieba
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
+from loguru import logger
 
 from utils import ScrapedData
 
@@ -62,7 +64,6 @@ class BrowserPagePool:
 
     async def borrow_page(self):
         # 新增一个 page 用于抓取页面
-        start_time = time.time()
         page = await self.context.new_page()
         
         # 0. 伪装, 禁用 Webdriver 标记
@@ -71,9 +72,6 @@ class BrowserPagePool:
                 get: () => false
             });
         """)
-        print(f"Time taken: {time.time() - start_time} seconds")
-
-        start_time = time.time()
         
         # 1. 设置 window.navigator.chrome
         # await page.evaluate("""
@@ -116,7 +114,6 @@ class BrowserPagePool:
 
         await page.route("**/*", block_images)
         
-        print(f"Time taken: {time.time() - start_time} seconds")
         return page
 
     def return_page(self, page):
@@ -209,7 +206,6 @@ def parse_search_page_smzdm(html_content: str) -> List[ScrapedData]:
         if platform_tag is None:
             continue
         
-        
         data = ScrapedData(
             img=img['src'],
             name=img['alt'],
@@ -226,7 +222,7 @@ def parse_search_page_smzdm(html_content: str) -> List[ScrapedData]:
 async def search_in_smzdm(sentence: str, page_num=5):
     # 使用 jieba 分词
     keyword = "".join(jieba.lcut(sentence))
-    print(f"Searching for: {keyword}")
+    logger.debug(f"Searching for: {keyword}")
     
     url = f"https://search.smzdm.com/?c=home&s={keyword}&v=b"
     
@@ -234,12 +230,11 @@ async def search_in_smzdm(sentence: str, page_num=5):
         for i in range(1, page_num + 1):
             html_content = await get_html(f"{url}&p={i}")
             result = parse_search_page_smzdm(html_content)
-            print(f"Got {len(result)} results from page")
+            logger.debug(f"Got {len(result)} results from page")
             yield result
 
     except Exception as e:
-        print(e)
-        return
+        logger.warning(traceback.format_exc())
         
 async def init():
     # Example cookies

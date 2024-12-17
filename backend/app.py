@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timedelta
 
 from fastapi import FastAPI, Request, Security, Response, Body, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +11,7 @@ from sqlalchemy import select, delete
 from passlib.context import CryptContext
 from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import loguru
+from loguru import logger
 
 import scraper
 from models import User, Good, GoodHistory, Base, Subscription
@@ -36,7 +37,12 @@ async def lifespan(app: FastAPI):
     
     # 启动定时任务
     scheduler.start()
-    scheduler.add_job(check_new_price_for_all_user, 'interval', seconds=60 * 60 * 24)
+    scheduler.add_job(
+        check_new_price_for_all_user, 
+        'interval', 
+        seconds=60 * 60 * 24, # 一天一大轮
+        next_run_time=datetime.now() + timedelta(minutes=2) # 两分钟后执行第一次
+    )
     
     yield
     
@@ -48,11 +54,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 scheduler = AsyncIOScheduler()
-logger = loguru.logger
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=['http://localhost:5173'],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -155,12 +160,12 @@ def logout(response: Response):
 
 
 @app.post('/api/good/search')
-async def search(search_req: Annotated[GoodSearchRequest, Body()]):
+async def search(search_req: Annotated[GoodSearchRequest, Body()], background_tasks: BackgroundTasks):
     keyword = search_req.keyword
     
     results = []
     async for result in scraper.search_in_smzdm(keyword):
-        asyncio.create_task(store_multi_scraped_data(result))
+        background_tasks.add_task(store_multi_scraped_data, result)
         results.extend(result)
     
     response = []
@@ -173,6 +178,8 @@ async def search(search_req: Annotated[GoodSearchRequest, Body()]):
         item['post_id'] = post_url_to_post_id(good.post_url)
         del item['post_url']
         response.append(item)
+        
+    logger.info(f"search results count: {len(response)}")
         
     return make_success_response({"goods": response})
 
