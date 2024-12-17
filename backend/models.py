@@ -8,7 +8,7 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.ext.declarative import declarative_base
-from pydantic import BaseModel
+from datetime import datetime
 
 # 创建 SQLAlchemy 的 Base 类
 Base = declarative_base()
@@ -52,3 +52,4 @@ class Subscription(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     good_post_id = Column(String(255), ForeignKey("good.post_id"), nullable=False)
     user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
+    last_notification_time = Column(DateTime, default=datetime(2000, 1, 1), nullable=False)

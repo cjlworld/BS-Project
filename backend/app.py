@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime
 
-from fastapi import FastAPI, Request, Security, Response, Body, HTTPException
+from fastapi import FastAPI, Request, Security, Response, Body, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi_jwt import JwtAuthorizationCredentials, JwtAccessCookie
@@ -18,7 +18,8 @@ from utils import (
     store_single_scraped_data, 
     post_url_to_post_id, 
     extract_float,
-    ScrapedData
+    ScrapedData,
+    check_new_price_for_user
 )
 
 from database import AsyncSessionLocal, engine
@@ -303,13 +304,12 @@ async def check_subscription(req: SubscriptionRequest, credentials: JwtAuthoriza
         else:
             return make_success_response({"is_subscribed": True})
 
-@app.post('/protected')
-def protected(credentials: JwtAuthorizationCredentials = Security(access_security)):
-    """
-    We do not need to make any changes to our protected endpoints. They
-    will all still function the exact same as they do when sending the
-    JWT in via a headers instead of a cookies
-    """
-    user_id = credentials["user_id"]
-    
-    return make_success_response({"user_id": user_id})
+
+@app.post('/api/subscription/email')
+async def handle_subscription_email(
+    background_tasks: BackgroundTasks,
+    credentials: JwtAuthorizationCredentials = Security(access_security)
+):
+    user_id = credentials['user_id']
+    background_tasks.add_task(check_new_price_for_user, user_id=user_id, always_inform=True)
+    return make_success_response({})

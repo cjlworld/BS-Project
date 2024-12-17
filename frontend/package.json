@@ -18,7 +18,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
-    "swr": "^2.2.5"
+    "swr": "^2.2.5",
+    "swr-cache": "^1.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

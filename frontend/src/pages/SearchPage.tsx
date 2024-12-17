@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import useSWRMutation from "swr/mutation";
+import useSWR from "swr";
+import { useSearchParams } from "react-router-dom";
 
 import GoodCard from "../components/GoodCard";
 import { postFetcher } from "../utils";
-
 import type { Good } from "../types";
-import { useSearchParams } from "react-router-dom";
 import PageLayout from "../components/PageLayout";
 
 interface SearchResponse {
@@ -18,31 +17,35 @@ interface SearchResquest {
 
 function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [formInput, setFormInput] = useState("");
   const [keyword, setKeyword] = useState("");
 
   // 使用 SWR 获取数据
-  const { data, error, trigger, isMutating } = useSWRMutation<SearchResponse, Error, string, SearchResquest>(
-    '/api/good/search', 
-    postFetcher
+  const { data, error, mutate, isLoading } = useSWR<SearchResponse, Error>(
+    keyword ? ['/api/good/search', keyword] : null,
+    async ([url, keyword]) => postFetcher<SearchResponse>(url, {arg: { keyword: keyword }}),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60 * 60 * 1000 // one hour
+    }
   );
 
   useEffect(() => {
     const query = searchParams.get("q");
     if (query?.trim()) {
       setKeyword(query);
-      trigger({
-        keyword: query
-      });
+      setFormInput(query);
+      mutate();
     }
   }, []);
 
   // 处理搜索按钮点击事件
   const handleSearch = () => {
-    if (keyword?.trim()) {
-      setSearchParams({ q: keyword });
-      trigger({
-        keyword: keyword
-      });
+    if (formInput?.trim()) {
+      setSearchParams({ q: formInput });
+      setKeyword(formInput);
+      mutate();
     } 
   };
 
@@ -75,21 +78,21 @@ function SearchPage() {
           type="text"
           placeholder="Type here"
           className="input input-bordered w-full max-w-lg"
-          value={keyword}
+          value={formInput}
           onChange={(e) => {
-            setKeyword(e.target.value);
+            setFormInput(e.target.value);
           }}
         />
-        <button className="btn btn-outline mx-5" disabled={keyword.length === 0 || isMutating} onClick={handleSearch}>
+        <button className="btn btn-outline mx-5" disabled={isLoading} onClick={handleSearch}>
           Search
         </button>
       </div>
 
       {/* Cards */}
       <div className="flex flex-wrap justify-around p-12">
-        {error && !isMutating ? (
+        {error && !isLoading ? (
           <div className="text-red-500">Failed to load data</div>
-        ) : (!data && isMutating) ? (
+        ) : (!data && isLoading) ? (
           <div className="text-gray-500 mt-5">Loading...</div>
         ) : (
           goodCardList
