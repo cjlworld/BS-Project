@@ -1,5 +1,4 @@
 import asyncio
-from datetime import datetime
 
 from fastapi import FastAPI, Request, Security, Response, Body, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,22 +9,21 @@ from typing import Annotated
 from sqlalchemy import select, delete
 from passlib.context import CryptContext
 from contextlib import asynccontextmanager
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import loguru
 
 import scraper
 from models import User, Good, GoodHistory, Base, Subscription
 from utils import (
     store_multi_scraped_data, 
-    store_single_scraped_data, 
     post_url_to_post_id, 
     extract_float,
-    ScrapedData,
+)
+from database import AsyncSessionLocal, engine
+from tasks import (
+    check_new_price_for_all_user,
     check_new_price_for_user
 )
-
-from database import AsyncSessionLocal, engine
-import loguru
-
-logger = loguru.logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,11 +34,21 @@ async def lifespan(app: FastAPI):
     # 启动时初始化浏览器池
     await scraper.init()
     
+    # 启动定时任务
+    scheduler.start()
+    scheduler.add_job(check_new_price_for_all_user, 'interval', seconds=60 * 60 * 24)
+    
     yield
+    
     # 关闭时清理资源（如果有需要）
     await scraper.browser_page_pool.close()
+    
+    # 关闭定时任务
+    scheduler.shutdown()
 
 app = FastAPI(lifespan=lifespan)
+scheduler = AsyncIOScheduler()
+logger = loguru.logger
 
 app.add_middleware(
     CORSMiddleware,
