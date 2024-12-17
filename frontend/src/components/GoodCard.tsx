@@ -43,7 +43,7 @@ function GoodCard(props: GoodCardProps) {
     >
       <figure>
         <img
-          src={`https:${goodData.img}`}
+          src={goodData.img.startsWith('http') ? goodData.img : `https:${goodData.img}`}
           alt={goodData.name} 
           referrerPolicy='no-referrer'
         />

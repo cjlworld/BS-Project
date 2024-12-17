@@ -1,7 +1,6 @@
 import asyncio
 import json
 import re
-import time
 from typing import List
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
@@ -145,7 +144,8 @@ async def get_html(url):
 formats = [
     "%H:%M",         # 13:25
     "%m-%d %H:%M",   # 11-29 16:42
-    "%Y-%m-%d"       # 2023-11-29
+    "%Y-%m-%d",      # 2023-11-29
+    "%m-%d"          # 11-29
 ]
 
 # 将时间字符串转换为 datetime 对象，没有的部分用当前时间补全
@@ -206,13 +206,22 @@ def parse_search_page_smzdm(html_content: str) -> List[ScrapedData]:
         if platform_tag is None:
             continue
         
+        try:
+            post_time = parse_time(extra_tag.contents[0].strip(), formats, datetime.now())
+        except ValueError:
+            continue
+        
+        post_url = post_btn['href']
+        if not post_url.startswith("https://www.smzdm.com/p/"):
+            continue
+        
         data = ScrapedData(
             img=img['src'],
             name=img['alt'],
             url=good_btna['href'],
-            post_url=post_btn['href'],
+            post_url=post_url,
             price=price_tag.text.strip(),
-            time=parse_time(extra_tag.contents[0].strip(), formats, datetime.now()),
+            time=post_time,
             platform=platform_tag.text.strip()
         )
         result.append(data)
@@ -233,7 +242,7 @@ async def search_in_smzdm(sentence: str, page_num=5):
             logger.debug(f"Got {len(result)} results from page")
             yield result
 
-    except Exception as e:
+    except Exception:
         logger.warning(traceback.format_exc())
         
 async def init():

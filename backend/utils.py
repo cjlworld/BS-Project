@@ -1,7 +1,7 @@
 import re
-import asyncio
 from urllib.parse import urlparse
 from datetime import datetime
+
 from pydantic import BaseModel
 from sqlalchemy import select
 from loguru import logger

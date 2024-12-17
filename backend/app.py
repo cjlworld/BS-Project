@@ -1,9 +1,10 @@
 import asyncio
+import json
 from datetime import datetime, timedelta
 
 from fastapi import FastAPI, Request, Security, Response, Body, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi_jwt import JwtAuthorizationCredentials, JwtAccessCookie
 from pydantic import BaseModel, EmailStr, ValidationError
 from typing import Annotated
@@ -163,26 +164,27 @@ def logout(response: Response):
 async def search(search_req: Annotated[GoodSearchRequest, Body()], background_tasks: BackgroundTasks):
     keyword = search_req.keyword
     
-    results = []
-    async for result in scraper.search_in_smzdm(keyword):
-        background_tasks.add_task(store_multi_scraped_data, result)
-        results.extend(result)
+    async def search_results_streamer():
+        async for result in scraper.search_in_smzdm(keyword):
+            background_tasks.add_task(store_multi_scraped_data, result)
     
-    response = []
-    for good in results:
-        item = good.dict()
-        prices = extract_float(good.price)
-        if len(prices) == 0:
-            continue
-        item['price'] = prices[0]
-        item['post_id'] = post_url_to_post_id(good.post_url)
-        del item['post_url']
-        response.append(item)
+            response = []
+            for good in result:
+                item = good.model_dump()
+                prices = extract_float(good.price)
+                if len(prices) == 0:
+                    continue
+                item['price'] = prices[0]
+                item['post_id'] = post_url_to_post_id(good.post_url)
+                del item['post_url']
+                item['time'] = str(good.time)
+                response.append(item)
+            
+            logger.info(f"search results count: {len(response)}")
+            yield json.dumps(response) + '\n'
         
-    logger.info(f"search results count: {len(response)}")
-        
-    return make_success_response({"goods": response})
-
+    return StreamingResponse(search_results_streamer(), media_type="application/x-ndjson")
+    
 
 class GoodDetailRequest(BaseModel):
     post_id: str
@@ -319,7 +321,7 @@ async def check_subscription(req: SubscriptionRequest, credentials: JwtAuthoriza
         else:
             return make_success_response({"is_subscribed": True})
 
-
+# 查询降价并发送邮件
 @app.post('/api/subscription/email')
 async def handle_subscription_email(
     background_tasks: BackgroundTasks,

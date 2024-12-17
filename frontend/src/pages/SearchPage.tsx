@@ -3,32 +3,19 @@ import useSWR from "swr";
 import { useSearchParams } from "react-router-dom";
 
 import GoodCard from "../components/GoodCard";
-import { postFetcher } from "../utils";
+import { postFetcher, useStreamFetcher } from "../utils";
 import type { Good } from "../types";
 import PageLayout from "../components/PageLayout";
 
-interface SearchResponse {
-  goods: Good[];
-}
-
-interface SearchResquest {
-  keyword: string;
-}
 
 function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [formInput, setFormInput] = useState("");
   const [keyword, setKeyword] = useState("");
 
-  // 使用 SWR 获取数据
-  const { data, error, mutate, isLoading } = useSWR<SearchResponse, Error>(
-    keyword ? ['/api/good/search', keyword] : null,
-    async ([url, keyword]) => postFetcher<SearchResponse>(url, {arg: { keyword: keyword }}),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 60 * 60 * 1000 // one hour
-    }
+  const { data, error, isLoading, trigger } = useStreamFetcher<Good>(
+    '/api/good/search',
+    { keyword },
   );
 
   useEffect(() => {
@@ -36,7 +23,6 @@ function SearchPage() {
     if (query?.trim()) {
       setKeyword(query);
       setFormInput(query);
-      mutate();
     }
   }, []);
 
@@ -45,17 +31,22 @@ function SearchPage() {
     if (formInput?.trim()) {
       setSearchParams({ q: formInput });
       setKeyword(formInput);
-      mutate();
     } 
   };
 
+  useEffect(() => {
+    if (keyword.trim()) {
+      trigger();
+    }
+  }, [keyword]);
+
   // 根据返回的数据生成产品卡片列表
-  const goodCardList = data?.goods?.map((good, index) => {
+  const goodCardList = data?.map((good, index) => {
     // 5 的整数倍
-    const total = data?.goods?.length - data?.goods?.length % 5;
+    const total = data?.length - data?.length % 5;
     if (index < total) {
       return (
-        <div key={index} className="mx-1 my-2">
+        <div key={good.post_id} className="mx-1 my-2">
           <GoodCard {...good}/>
         </div>
       );
@@ -69,7 +60,7 @@ function SearchPage() {
   return (
     <PageLayout>
       <div className="w-full flex justify-center">
-        <img src="./logo.svg" alt="Your Image" className="max-w-full max-h-60" />
+        <img src="./logo.svg" alt="logo" className="max-w-full max-h-60" />
       </div>
 
       {/* Search Bar */}
@@ -84,7 +75,7 @@ function SearchPage() {
           }}
         />
         <button className="btn btn-outline mx-5" disabled={isLoading} onClick={handleSearch}>
-          Search
+          {isLoading ? "Loading" : "Search"}
         </button>
       </div>
 
