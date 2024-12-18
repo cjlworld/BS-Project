@@ -35,9 +35,10 @@ def send_email(subject, body, to_email, attachment_path=None):
 
     # 连接到邮件服务器并发送邮件
     with smtplib.SMTP(smtp_server, smtp_port) as server:
-        server.starttls()
+        # server.starttls()
         server.login(sender_email, sender_password)
         server.sendmail(sender_email, to_email, msg.as_string())
+        server.quit()
         
 if __name__ == '__main__':
     send_email(
