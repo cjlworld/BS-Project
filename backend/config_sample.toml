@@ -1,0 +1,14 @@
+[email]
+sender_email = "******@163.com"
+sender_password = "******"
+smtp_server = "smtp.163.com"
+smtp_port = 465
+
+[cors] 
+allow_origins = ['http://localhost:5173']
+
+[jwt]
+secret_key = 'secret_key'
+
+[database]
+database_url = 'mysql+aiomysql://root:root@localhost:3307/bs'
