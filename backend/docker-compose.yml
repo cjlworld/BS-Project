@@ -1,0 +1,10 @@
+name: backend_app
+services:
+  backend-app:
+    # network_mode: host
+    container_name: backend_app
+    image: backend-app
+    volumes:
+      - ./config.toml:/app/config.toml
+    ports:
+      - "8000:8000"

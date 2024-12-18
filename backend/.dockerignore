@@ -1,0 +1,6 @@
+__pycache__
+.venv
+Dockerfile
+.gitignore
+config_sample.toml
+config.toml
