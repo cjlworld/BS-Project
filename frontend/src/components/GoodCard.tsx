@@ -53,7 +53,7 @@ function GoodCard(props: GoodCardProps) {
       <div className="card-body">
         <h2 className="card-title text-base line-clamp-3 min-h-[4.5em]"> { goodData.name } </h2>
         <p> { goodData.platform } </p>
-        <p> ￥{ goodData.price } </p>
+        <p className="text-xl font-bold"> ￥{ goodData.price } </p>
         <p> { goodData.time } </p>
       </div>
     </a>
