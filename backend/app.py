@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request, Security, Response, Body, HTTPException, B
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi_jwt import JwtAuthorizationCredentials, JwtAccessCookie
-from pydantic import BaseModel, EmailStr, ValidationError
+from pydantic import BaseModel, EmailStr, ValidationError, StringConstraints
 from typing import Annotated
 from sqlalchemy import select, delete
 from passlib.context import CryptContext
@@ -77,10 +77,10 @@ class UserLoginRequest(BaseModel):
     password: str
     
 class UserRegisterRequest(BaseModel):
-    email: EmailStr
-    username: str
-    password: str
-
+    email: EmailStr # 验证邮箱
+    username: Annotated[str, StringConstraints(min_length=6)] # 限制 6 个字符以上
+    password: Annotated[str, StringConstraints(min_length=6)] # 限制 6 个字符以上
+    
 class GoodSearchRequest(BaseModel):
     keyword: str
     
