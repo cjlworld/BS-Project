@@ -1,0 +1,7 @@
+name: frontend_app
+services:
+  frontend_app:
+    image: frontend-app
+    ports:
+        - 20001:20001
+      
