@@ -2,7 +2,6 @@ import useSWRMutation from "swr/mutation";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import NavBar from "../components/NavBar";
 import PageLayout from "../components/PageLayout";
 import { postFetcher } from "../utils";
 

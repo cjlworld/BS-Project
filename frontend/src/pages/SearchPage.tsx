@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import useSWR from "swr";
 import { useSearchParams } from "react-router-dom";
 
 import GoodCard from "../components/GoodCard";
-import { postFetcher, useStreamFetcher } from "../utils";
+import { useStreamFetcher } from "../utils";
 import type { Good } from "../types";
 import PageLayout from "../components/PageLayout";
 
