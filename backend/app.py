@@ -1,4 +1,5 @@
 import json
+import traceback
 from datetime import datetime, timedelta
 
 from fastapi import FastAPI, Request, Security, Response, Body, HTTPException, BackgroundTasks
@@ -12,6 +13,7 @@ from passlib.context import CryptContext
 from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from loguru import logger
+from openai import OpenAI
 
 import scraper
 from models import User, Good, GoodHistory, Base, Subscription
@@ -54,8 +56,11 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown()
 
 app = FastAPI(lifespan=lifespan)
+
+# 配置定时任务管理器
 scheduler = AsyncIOScheduler()
 
+# 配置 CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config['cors']['allow_origins'],
@@ -70,7 +75,11 @@ access_security = JwtAccessCookie(
     auto_error=True
 )
 
+# 配置密码加密
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+# 配置 ai_client
+ai_client = OpenAI(api_key=config['openai']['api_key'], base_url="https://api.deepseek.com")
 
 class UserLoginRequest(BaseModel):
     email: EmailStr
@@ -185,6 +194,31 @@ async def search(search_req: Annotated[GoodSearchRequest, Body()], background_ta
         
     return StreamingResponse(search_results_streamer(), media_type="application/x-ndjson")
     
+@app.post('/api/good/ai')
+def handle_ai(search_req: Annotated[GoodSearchRequest, Body()]):
+    
+    def get_ai_response(search_term: str):
+        try:
+            # 调用 OpenAI API，使用流式响应
+            response = ai_client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {"role": "system", "content": "你是一个给出购买建议的助手"},
+                    {"role": "user", "content": f"提供一些对购买 {search_term} 的建议"}
+                ],
+                stream=True  # 启用流式响应
+            )
+
+            # 处理流式响应
+            for chunk in response:
+                try:
+                    yield chunk.choices[0].delta.content  # 逐条返回内容
+                except Exception:  # 如果没有内容，则忽略
+                    pass
+        except Exception:
+            logger.warning(traceback.format_exc())
+    
+    return StreamingResponse(get_ai_response(search_req.keyword), media_type="text/event-stream")
 
 class GoodDetailRequest(BaseModel):
     post_id: str

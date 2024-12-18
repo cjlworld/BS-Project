@@ -12,3 +12,6 @@ secret_key = 'secret_key'
 
 [database]
 database_url = 'mysql+aiomysql://root:root@localhost:3307/bs'
+
+[openai]
+api_key = "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
