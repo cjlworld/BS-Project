@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 
 // 注意后端是 http 还是 https
 // 写错了会出现 net::ERR_SSL_PROTOCOL_ERROR
-const prefix: string = "http://localhost:8000";
+const prefix: string = "http://localhost:8001";
 
 export async function getFetcher<T>(key: string): Promise<T> {
   const resp = await fetch(prefix + key, {
@@ -103,6 +103,65 @@ export function useStreamFetcher<T>(key: string, body: unknown) {
         } catch (e) {
           // 如果数据不完整，继续读取
         }
+      }
+    } catch (e) {
+      errorRef.current = e as Error;
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return {
+    data,
+    error: errorRef.current,
+    isLoading,
+    trigger: fetchStream,
+  };
+}
+
+export function useStringStreamFetcher<T>(key: string, body: unknown) {
+  const [data, setData] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const errorRef = useRef<Error | null>(null);
+  const dataRef = useRef<T[] | null>(null);
+
+  async function fetchStream() {
+    if (isLoading) return;
+    setIsLoading(true);
+    errorRef.current = null;
+    dataRef.current = null;
+
+    try {
+      const response = await fetch(prefix + key, {
+        mode: "cors",
+        credentials: "include",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error("Response body is empty!");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let result = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        result += decoder.decode(value, { stream: true });
+        setData(result);
+        // 逐步解析数据并更新 UI
       }
     } catch (e) {
       errorRef.current = e as Error;

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import ReactMarkdown from 'react-markdown';
 
 import GoodCard from "../components/GoodCard";
-import { useStreamFetcher } from "../utils";
+import { useStreamFetcher, useStringStreamFetcher } from "../utils";
 import type { Good } from "../types";
 import PageLayout from "../components/PageLayout";
 
@@ -12,8 +13,13 @@ function SearchPage() {
   const [formInput, setFormInput] = useState("");
   const [keyword, setKeyword] = useState("");
 
-  const { data, error, isLoading, trigger } = useStreamFetcher<Good>(
+  const { data: goodsData, error: goodsError, isLoading: goodsIsLoading, trigger: goodsTrigger } = useStreamFetcher<Good>(
     '/api/good/search',
+    { keyword },
+  );
+
+  const { data: aiData, error: aiError, isLoading: aiIsLoading, trigger: aiTrigger } = useStringStreamFetcher<string>(
+    '/api/good/ai',
     { keyword },
   );
 
@@ -35,14 +41,15 @@ function SearchPage() {
 
   useEffect(() => {
     if (keyword.trim()) {
-      trigger();
+      goodsTrigger();
+      aiTrigger();
     }
   }, [keyword]);
 
   // 根据返回的数据生成产品卡片列表
-  const goodCardList = data?.map((good, index) => {
+  const goodCardList = goodsData?.map((good, index) => {
     // 5 的整数倍
-    const total = data?.length - data?.length % 5;
+    const total = goodsData?.length - goodsData?.length % 5;
     if (index < total) {
       return (
         <div key={good.post_id} className="mx-1 my-2">
@@ -73,20 +80,27 @@ function SearchPage() {
             setFormInput(e.target.value);
           }}
         />
-        <button className="btn btn-outline mx-5" disabled={isLoading} onClick={handleSearch}>
-          {isLoading ? "Loading" : "Search"}
+        <button className="btn btn-outline mx-5" disabled={goodsIsLoading} onClick={handleSearch}>
+          {goodsIsLoading ? "Loading" : "Search"}
         </button>
+      </div>
+
+      <div className="card card-compact bg-base-100 mx-auto flex justify-center mt-5 p-4">
+        <div className="text-gray-500 mx-auto">
+          <ReactMarkdown>{aiData}</ReactMarkdown>
+          {/* {aiData} */}
+        </div>
       </div>
 
       {/* Cards */}
       <div className="w-full flex flex-col justify-center justify-items-center">
-        {error && !isLoading ? (
+        {goodsError && !goodsIsLoading ? (
           <div className="text-red-500 mt-5 mx-auto">Failed to load data</div>
-        ) : (!data && isLoading) ? (
+        ) : (!goodsData && goodsIsLoading) ? (
           <div className="text-gray-500 mt-5 mx-auto">Loading...</div>
         ) : (
           <>
-            {isLoading && <div className="text-gray-500 mt-5 mx-auto">Loading...</div>}
+            {goodsIsLoading && <div className="text-gray-500 mt-5 mx-auto">Loading...</div>}
             <div className="flex flex-wrap justify-around p-12">
               {goodCardList}
             </div>
