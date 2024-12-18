@@ -3,3 +3,4 @@ cookies.json
 *.html
 __pycache__/
 config.toml
+.venv
