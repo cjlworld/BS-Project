@@ -48,8 +48,17 @@ function GoodDetailPage() {
   const columns = [
     { title: '价格', dataIndex: 'price', key: 'price' },
     { title: '时间', dataIndex: 'time', key: 'time' },
-    { title: '商品编号', dataIndex: 'post_id', key: 'post_id' },
+    { title: '商品编号（点击跳转）', dataIndex: 'post_id', key: 'post_id' },
   ];
+
+  const tableData = Array.from(historyData).reverse().map(item => ({
+    price: item.price,
+    time: item.time,
+    key: `${item.time} ${item.price}`,
+    post_id: (
+      <a href={`/#/good-detail/${item.post_id}`}>{item.post_id}</a>
+    )
+  }));
 
   // 处理历史数据，转换为折线图所需格式
   const chartData = historyData.map(item => ({
@@ -86,7 +95,7 @@ function GoodDetailPage() {
   //   <GoodCard key={postId} post_id={postId} />
   // ));
 
-  const tableData = Array.from(historyData).reverse();
+  
 
   return (
     <PageLayout>
@@ -108,7 +117,7 @@ function GoodDetailPage() {
         {/* 历史价格表格 */}
         <div className="mt-8">
           <h3 className="text-xl font-bold mb-4">历史价格</h3>
-          <Table dataSource={tableData} columns={columns} rowKey="time" />
+          <Table dataSource={tableData} columns={columns} rowKey="key" />
         </div>
 
         {/* 相关商品 */}
