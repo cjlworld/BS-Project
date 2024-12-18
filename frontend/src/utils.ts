@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useState, useRef } from "react";
 
 // 注意后端是 http 还是 https
 // 写错了会出现 net::ERR_SSL_PROTOCOL_ERROR

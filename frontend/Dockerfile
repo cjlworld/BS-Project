@@ -23,7 +23,7 @@ RUN rm -rf /app/node_modules
 FROM nginx:alpine
 
 # 复制 build 容器的 构建好的 前端 应用到 Nginx 默认的静态文件目录
-COPY --from=build /app/build /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 
 # 复制 上下文中 自定义的 Nginx 配置文件
 COPY nginx_front.conf /etc/nginx/conf.d/default.conf

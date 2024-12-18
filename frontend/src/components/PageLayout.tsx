@@ -8,7 +8,7 @@ interface PageLayoutProps {
 
 function PageLayout(props: PageLayoutProps) {
   return (
-    <div className="min-h-screen bg-[url('./background.png')] bg-cover bg-center bg-fixed flex flex-col">
+    <div className="min-h-screen bg-[url('/background.png')] bg-cover bg-center bg-fixed flex flex-col">
       <NavBar></NavBar>
       {props.children}
     </div>
