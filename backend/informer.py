@@ -2,11 +2,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
-import toml
 
-# 读取配置文件
-with open('config.toml', 'r') as config_file:
-    config = toml.load(config_file)
+from config import config
     
 email_config = config['email']
 

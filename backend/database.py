@@ -1,7 +1,9 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
+from config import config
+
 engine = create_async_engine(
-    "mysql+aiomysql://root:root@localhost:3307/bs", 
+    config['database']['database_url'],
     echo=False,
     pool_size=20,  # 连接池大小
     max_overflow=40,  # 最大溢出连接数

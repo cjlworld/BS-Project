@@ -1,4 +1,3 @@
-import asyncio
 import json
 from datetime import datetime, timedelta
 
@@ -26,6 +25,7 @@ from tasks import (
     check_new_price_for_all_user,
     check_new_price_for_user
 )
+from config import config
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -58,7 +58,7 @@ scheduler = AsyncIOScheduler()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['http://localhost:5173'],
+    allow_origins=config['cors']['allow_origins'],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -66,7 +66,7 @@ app.add_middleware(
 
 # 配置 JWT 认证
 access_security = JwtAccessCookie(
-    secret_key="secret_key", 
+    secret_key=config['jwt']['secret_key'],
     auto_error=True
 )
 
