@@ -81,7 +81,7 @@ function SearchPage() {
       {/* Cards */}
       <div className="w-full flex flex-col justify-center justify-items-center">
         {error && !isLoading ? (
-          <div className="text-red-500">Failed to load data</div>
+          <div className="text-red-500 mt-5 mx-auto">Failed to load data</div>
         ) : (!data && isLoading) ? (
           <div className="text-gray-500 mt-5 mx-auto">Loading...</div>
         ) : (
