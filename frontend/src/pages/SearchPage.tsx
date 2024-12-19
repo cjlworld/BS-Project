@@ -84,13 +84,20 @@ function SearchPage() {
           {goodsIsLoading ? "Loading" : "Search"}
         </button>
       </div>
-
-      <div className="card card-compact bg-base-100 mx-auto flex justify-center mt-5 p-4">
-        <div className="text-gray-500 mx-auto">
-          <ReactMarkdown>{aiData}</ReactMarkdown>
-          {/* {aiData} */}
-        </div>
-      </div>
+        
+      {
+        aiData && (
+          <div className="card card-compact bg-base-100 mx-auto flex justify-center mt-5 p-4">
+            <div className="card-body">
+              <h2 className="card-title text-base"> AI 智选 </h2>
+              <div className="text-gray-500 mx-auto">
+                <ReactMarkdown>{aiData}</ReactMarkdown>
+                {/* {aiData} */}
+              </div>
+            </div>
+          </div>
+        )
+      }
 
       {/* Cards */}
       <div className="w-full flex flex-col justify-center justify-items-center">
