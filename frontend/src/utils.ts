@@ -2,8 +2,8 @@ import { useState, useRef } from "react";
 
 // 注意后端是 http 还是 https
 // 写错了会出现 net::ERR_SSL_PROTOCOL_ERROR
-// const prefix: string = "http://101.34.242.157:8000";
-const prefix: string = "http://localhost:8000";
+const prefix: string = "http://101.34.242.157:8000";
+// const prefix: string = "http://localhost:8000";
 
 export async function getFetcher<T>(key: string): Promise<T> {
   const resp = await fetch(prefix + key, {
