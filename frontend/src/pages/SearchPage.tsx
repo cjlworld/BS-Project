@@ -18,7 +18,7 @@ function SearchPage() {
     { keyword },
   );
 
-  const { data: aiData, error: aiError, isLoading: aiIsLoading, trigger: aiTrigger } = useStringStreamFetcher<string>(
+  const { data: aiData, trigger: aiTrigger } = useStringStreamFetcher<string>(
     '/api/good/ai',
     { keyword },
   );

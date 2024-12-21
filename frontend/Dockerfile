@@ -4,11 +4,13 @@ FROM node:20-alpine AS build
 # 设置工作目录
 WORKDIR /app/
 
+# 更换 npm 源为淘宝源（或其他国内源）
+RUN npm config set registry https://registry.npmmirror.com
+
 # 安装 pnpm
 RUN npm install -g pnpm
 
-# 更换 npm 源为淘宝源（或其他国内源）
-RUN npm config set registry https://registry.npmmirror.com
+RUN pnpm config set registry https://registry.npmmirror.com
 
 # 添加 上下文（宿主机）的 所有文件到 build 容器的 /app 目录
 COPY . .

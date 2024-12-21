@@ -1,7 +1,13 @@
 name: frontend_app
 services:
   frontend_app:
+    build:
+        context: .
+        dockerfile: Dockerfile
     image: frontend-app
-    ports:
-        - 20001:20001
+    container_name: frontend_app
+    network_mode: host
+    restart: always
+    # ports:
+    #     - 20001:20001
       

@@ -4,3 +4,4 @@ cookies.json
 __pycache__/
 config.toml
 .venv
+*.zip
