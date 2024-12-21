@@ -73,7 +73,7 @@ function SearchPage() {
       <div className="mx-auto w-full flex justify-center mt-5">
         <input
           type="text"
-          placeholder="Type here"
+          placeholder="请输入商品关键词"
           className="input input-bordered w-full max-w-lg"
           value={formInput}
           onChange={(e) => {
@@ -81,7 +81,7 @@ function SearchPage() {
           }}
         />
         <button className="btn btn-outline mx-5" disabled={goodsIsLoading} onClick={handleSearch}>
-          {goodsIsLoading ? "Loading" : "Search"}
+          {goodsIsLoading ? "加载中" : "搜索"}
         </button>
       </div>
         

@@ -104,6 +104,18 @@ function GoodDetailCard(props: GoodDetailCardProps) {
         <p className="text-gray-500">{detailData.time}</p>
         <div className="card-actions justify-end">
           <SubscriptionButton post_id={detailData.post_id}></SubscriptionButton>
+          {/* 如果当前不是在 /#/good-detail/ 页面，则显示返回按钮 */
+            (!window.location.hash.startsWith("#/good-detail")) && (
+              <a
+                href={`/#/good-detail/${detailData.post_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary"
+              >
+                商品详情页
+              </a>
+            )
+          }
           <a
             href={detailData.url}
             target="_blank"

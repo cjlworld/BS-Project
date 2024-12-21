@@ -58,7 +58,7 @@ function LoginCard() {
               <path
                 d="M15 6.954 8.978 9.86a2.25 2.25 0 0 1-1.956 0L1 6.954V11.5A1.5 1.5 0 0 0 2.5 13h11a1.5 1.5 0 0 0 1.5-1.5V6.954Z" />
             </svg>
-            <input type="text" className="grow" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input type="text" className="grow" placeholder="电子邮箱" value={email} onChange={(e) => setEmail(e.target.value)} />
           </label>
           <label className="input input-bordered flex items-center gap-2 my-3">
             <svg
@@ -71,7 +71,7 @@ function LoginCard() {
                 d="M14 6a4 4 0 0 1-4.899 3.899l-1.955 1.955a.5.5 0 0 1-.353.146H5v1.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-2.293a.5.5 0 0 1 .146-.353l3.955-3.955A4 4 0 1 1 14 6Zm-4-2a.75.75 0 0 0 0 1.5.5.5 0 0 1 .5.5.75.75 0 0 0 1.5 0 2 2 0 0 0-2-2Z"
                 clipRule="evenodd" />
             </svg>
-            <input type="password" className="grow" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input type="password" className="grow" placeholder="密码" value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
         </div>
         <div className="card-actions justify-end">
