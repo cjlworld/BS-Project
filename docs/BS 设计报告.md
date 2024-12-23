@@ -50,12 +50,13 @@
     - [4. 用户注册](#4-用户注册)
     - [5. 用户登录](#5-用户登录)
     - [6. 用户退出登录](#6-用户退出登录)
-    - [7. 激活账户](#7-激活账户)
+    - [7. 用户刷新登录](#7-用户刷新登录)
     - [8. 订阅商品降价信息](#8-订阅商品降价信息)
     - [9. 退订商品降价信息](#9-退订商品降价信息)
     - [10. 查看所有订阅的商品](#10-查看所有订阅的商品)
-    - [11. AI 智能分析比价](#11-ai-智能分析比价)
-    - [12. AI 对话](#12-ai-对话)
+    - [11. 查看当前商品是否被订阅](#11-查看当前商品是否被订阅)
+    - [12. 强制发送降价提醒消息](#12-强制发送降价提醒消息)
+    - [13. AI 智选](#13-ai-智选)
   - [前端界面原型](#前端界面原型)
     - [1. 登录界面](#1-登录界面)
     - [2. 查询页面](#2-查询页面)
@@ -184,7 +185,9 @@
 
 - Deepseek：[DeepSeek | 深度求索](https://www.deepseek.com/)
 - 通义：[通义tongyi.ai_你的全能AI助手-通义千问](https://tongyi.aliyun.com/qianwen/)
-- 智谱清言（ChatGLM）：[智谱清言](https://chatglm.cn/?lang=zh)
+- 智谱清言（ChatGLM）：[智谱清言](https://chatglm.cn/?lang=zh) 
+
+最终使用的是 Deepseek 的 API。
 
 ### 前端技术栈
 
@@ -207,15 +210,11 @@
 - **Tailwind CSS**：一个实用优先的 CSS 框架，提供快速构建自定义用户界面的工具。
   [Tailwind CSS - 只需书写 HTML 代码，无需书写 CSS，即可快速构建美观的网站。 | TailwindCSS中文文档 | TailwindCSS中文网](https://www.tailwindcss.cn/)
 - **Daisy UI**：一个基于 Tailwind CSS 的组件库，提供预构建的 UI 组件。
-  [daisyUI — Tailwind CSS Components ( version 4 update is here )](https://daisyui.com/)
+  [daisyUI — Tailwind CSS Components ( version 4 update is here )](https://daisyui.com/) 
 
 ### 移动端技术栈
 
-移动端使用 React Native 来编写 APP，这样从 React 前端到 APP 的移植成本较低。
-
-- **React Native**：一个用于构建跨平台移动应用的框架，基于 React，提供原生应用的性能和体验。
-
-  [React Native 中文网 · 使用React来编写原生应用的框架](https://reactnative.cn/)
+我是用的 Tailwind CSS  的响应式 UI，能够自适应包括手机和电脑等尺寸不一的屏幕。因此只需要使用手机端浏览器即可。
 
 ### 部署方案
 
@@ -301,11 +300,10 @@
 
 | 字段名        | 类型    | 主键 | 外键 | 说明         |
 | ------------- | ------- | ---- | ---- | ------------ |
-| `user_id`   | INT     | 是   | 无   | 用户唯一标识 |
+| `id`   | INT     | 是   | 无   | 用户唯一标识 |
 | `email`     | TEXT    | 唯一 | 无   | 用户邮箱     |
 | `password`  | TEXT    | 否   | 无   | 加密后的密码 |
 | `username`  | TEXT    | 否   | 无   | 用户名       |
-| `is_active` | BOOLEAN | 否   | 无   | 账号是否激活 |
 
 #### **2. 商品模块**
 
@@ -313,13 +311,12 @@
 
 | 字段名          | 类型         | 主键 | 外键 | 说明                         |
 | --------------- | ------------ | ---- | ---- | ---------------------------- |
-| `product_id`  | INT          | 是   | 无   | 商品唯一标识                 |
+| `id`  | INT          | 是   | 无   | 商品唯一标识                 |
 | `name`        | TEXT         | 否   | 无   | 商品名称                     |
-| `category`    | TEXT         | 否   | 无   | 商品分类                     |
-| `image_url`   | TEXT         | 否   | 无   | 商品图片链接                 |
+| `img`  | TEXT         | 否   | 无   | 商品图片链接                 |
 | `platform`    | VARCHAR(255) | 否   | 无   | 数据来源平台（淘宝、京东等） |
-| `platform_id` | TEXT         | 否   | 无   | 对应数据来源平台的唯一 id    |
-| data            | JSON         | 否   | 否   | 存商品的其他信息             |
+| `post_id` | TEXT   | 否   | 否  | 存商品的唯一 ID      |
+| `url` | TEXT | 否 | 否 | 商品详情页链接 |
 
 #### **3. 商品历史价格模块**
 
@@ -327,10 +324,10 @@
 
 | 字段名          | 类型           | 主键 | 外键     | 说明             |
 | --------------- | -------------- | ---- | -------- | ---------------- |
-| `history_id`  | INT            | 是   | 无       | 历史记录唯一标识 |
-| `product_id`  | INT            | 否   | 商品模块 | 关联商品 ID      |
+| `id`  | INT            | 是   | 无       | 历史记录唯一标识 |
+| `good_id` | INT            | 否   | 商品模块 | 关联商品 ID      |
 | `price`       | DECIMAL(30,10) | 否   | 无       | 记录的商品价格   |
-| `recorded_at` | TIMESTAMP      | 否   | 无       | 价格记录时间     |
+| `time` | TIMESTAMP | 否   | 无       | 价格记录时间     |
 
 #### **4. 订阅模块**
 
@@ -338,10 +335,10 @@
 
 | 字段名              | 类型           | 主键 | 外键     | 说明                       |
 | ------------------- | -------------- | ---- | -------- | -------------------------- |
-| `subscription_id` | INT            | 是   | 无       | 订阅记录唯一标识           |
+| `id` | INT            | 是   | 无       | 订阅记录唯一标识           |
 | `user_id`         | INT            | 否   | 用户模块 | 订阅者的用户 ID            |
-| `product_id`      | INT            | 否   | 商品模块 | 订阅的商品 ID              |
-| `target_price`    | DECIMAL(30,10) | 否   | 无       | 目标价格，低于此值触发通知 |
+| `good_id`  | INT            | 否   | 商品模块 | 订阅的商品 ID              |
+| `last_notification_time` | TIMESTAMP | 否   | 无       | 上次通知的时间 |
 
 ### 后端 API 设计
 
@@ -369,7 +366,7 @@
 
 #### 1. 查询商品 ID 列表
 
-**URL**: `/api/products/search`
+**URL**: `/api/goods/search`
 
 **Method**: POST
 
@@ -387,13 +384,25 @@
 
 ```json
 {
-  "product_ids": [1, 2, 3, 4, 5]
+  "post_id": "taobao123",
+  "name": "Redmi Buds 4",
+  "img": "//example.com/image1.jpg",
+  "platform": "淘宝",
+  "url": "//taobao.com/fbuekebfejfnwe"
 }
+{
+  "post_id": "taobao123",
+  "name": "Redmi Buds 4",
+  "img": "//example.com/image1.jpg",
+  "platform": "淘宝",
+  "url": "//taobao.com/fbuekebfejfnwe"
+}
+...
 ```
 
 #### 2. 获取商品详细信息
 
-**URL**: `/api/products/detail`
+**URL**: `/api/goods/detail`
 
 **Method**: POST
 
@@ -401,7 +410,7 @@
 
 ```json
 {
-  "product_id": 1
+  "post_id": 1
 }
 ```
 
@@ -409,22 +418,17 @@
 
 ```
 {
-  "product_id": 1,
+  "post_id": "taobao123",
   "name": "Redmi Buds 4",
-  "category": "耳机",
-  "image_url": "https://example.com/image1.jpg",
+  "img": "//example.com/image1.jpg",
   "platform": "淘宝",
-  "platform_id": "taobao123",
-  "data": {
-    "price": 199.00,
-    "description": "Redmi Buds 4 无线耳机，音质清晰，佩戴舒适。"
-  }
+  "url": "//taobao.com/fbuekebfejfnwe"
 }
 ```
 
 #### 3. 获取商品历史价格
 
-**URL**: `/api/products/history`
+**URL**: `/api/goods/history`
 
 **Method**: POST
 
@@ -432,27 +436,23 @@
 
 ```json
 {
-  "product_id": 1,
-  "start_date": "2024-01-01",
-  "end_date": "2024-12-31"
+  "post_id": "1",
 }
 ```
 
 **Response**:
 
-```
+```json
 [
   {
-    "history_id": 1,
-    "product_id": 1,
+    "post_id": "2",
     "price": 199.00,
-    "recorded_at": "2024-01-01T00:00:00Z"
+    "time": "2024-01-01T00:00:00Z"
   },
   {
-    "history_id": 2,
-    "product_id": 1,
+    "post_id": "1",
     "price": 189.00,
-    "recorded_at": "2024-02-01T00:00:00Z"
+    "time": "2024-02-01T00:00:00Z"
   }
 ]
 ```
@@ -497,9 +497,7 @@
 **Response**:
 
 ```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-}
+{}
 ```
 
 #### 6. 用户退出登录
@@ -520,23 +518,21 @@
 {}
 ```
 
-#### 7. 激活账户
+#### 7. 用户刷新登录
 
-**URL**: `/api/user/activate`
+**URL**: `/api/user/refresh`
 
 **Method**: POST
 
-**Request Body**:
+**Request Body**: （使用 cookie 进行用户识别，因此不需要发送用户信息）
 
 ```json
-{
-  "activation_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-}
+{}
 ```
 
 **Response**:
 
-```
+```json
 {}
 ```
 
@@ -550,8 +546,7 @@
 
 ```json
 {
-  "product_id": 1,
-  "target_price": 180.00
+  "good_post_id": 1
 }
 ```
 
@@ -563,7 +558,7 @@
 
 #### 9. 退订商品降价信息
 
-**URL**: `/api/subscription/remove`
+**URL**: `/api/subscription/cancel`
 
 **Method**: POST
 
@@ -571,7 +566,7 @@
 
 ```json
 {
-  "product_id": 1
+  "good_post_id": 1
 }
 ```
 
@@ -583,7 +578,47 @@
 
 #### 10. 查看所有订阅的商品
 
-**URL**: `/api/subscription/list`
+**URL**: `/api/subscription/get`
+
+**Method**: POST
+
+**Request Body**:（使用 cookie 进行用户识别，因此不需要发送用户信息）
+
+```json
+{
+  "good_post_id": "string"
+}
+```
+
+**Response**:
+
+```json
+["post_ids", ...]
+```
+
+#### 11. 查看当前商品是否被订阅
+
+**URL**: `/api/subscription/check`
+
+**Method**: POST
+
+**Request Body**:（使用 cookie 进行用户识别，因此不需要发送用户信息）
+
+```json
+{
+  "good_post_id": "string"
+}
+```
+
+**Response**:
+
+```json
+["post_ids", ...]
+```
+
+#### 12. 强制发送降价提醒消息
+
+**URL**: `/api/subscription/email`
 
 **Method**: POST
 
@@ -596,21 +631,12 @@
 **Response**:
 
 ```json
-[
-  {
-    "product_id": 1,
-    "target_price": 180.00
-  },
-  {
-    "product_id": 2,
-    "target_price": 200.00
-  }
-]
+{}
 ```
 
-#### 11. AI 智能分析比价
+#### 13. AI 智选
 
-**URL**: `/api/ai/compare`
+**URL**: `/api/goods/ai`
 
 **Method**: POST
 
@@ -618,38 +644,14 @@
 
 ```json
 {
-  "product_ids": [1, 2, 3]
+  "keyword": "学生使用 平板电脑"
 }
 ```
 
 **Response**: 该 Response 也使用 `StreamResponse` 方式返回。
 
 ```json
-{
-  "analysis": "根据价格和功能分析，Redmi Buds 4 性价比最高，建议优先考虑。"
-}
-```
-
-#### 12. AI 对话
-
-**URL**: `/api/ai/chat`
-
-**Method**: POST
-
-**Request Body**:
-
-```json
-{
-  "question": "什么是适合学生使用的平板电脑？"
-}
-```
-
-**Response**: 该 Response 也使用 `StreamResponse` 方式返回。
-
-```json
-{
-  "answer": "适合学生使用的平板电脑应具备轻便、续航时间长、价格适中等特点。推荐考虑 iPad 或华为 MatePad。"
-}
+"适合学生使用的平板电脑应具备轻便、续航时间长、价格适中等特点。推荐考虑 iPad 或华为 MatePad。"
 ```
 
 ### 前端界面原型
