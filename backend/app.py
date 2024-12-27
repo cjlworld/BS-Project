@@ -280,7 +280,7 @@ def gen_similar_search_regexp(sentence: str) -> str:
     # 手动禁用一些词
     ban_words = [' ', '百亿', '补贴', '今日', '必买', '限地区', '以旧换新', '限', '地区', '京东', '会员']
     
-    words = jieba.lcut_for_search(replace_non_chinese_english_numbers_with_space(sentence))
+    words = jieba.lcut(replace_non_chinese_english_numbers_with_space(sentence))
     # 删除 words 的 禁用词
     words = list(filter(lambda x: x not in ban_words, words))
 
