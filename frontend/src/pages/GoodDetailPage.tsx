@@ -12,6 +12,7 @@ interface HistoryData {
   post_id: string;
   time: string;
   price: number;
+  name: string;
 }
 
 type GoodHistoryResponse = HistoryData[];
@@ -48,7 +49,7 @@ function GoodDetailPage() {
   const columns = [
     { title: '价格', dataIndex: 'price', key: 'price' },
     { title: '时间', dataIndex: 'time', key: 'time' },
-    { title: '商品编号（点击跳转）', dataIndex: 'post_id', key: 'post_id' },
+    { title: '商品（点击跳转）', dataIndex: 'post_id', key: 'post_id' },
   ];
 
   const tableData = Array.from(historyData).reverse().map(item => ({
@@ -56,7 +57,7 @@ function GoodDetailPage() {
     time: item.time,
     key: `${item.time} ${item.price}`,
     post_id: (
-      <a href={`/#/good-detail/${item.post_id}`}>{item.post_id}</a>
+      <a href={`/#/good-detail/${item.post_id}`}>{item.name}</a>
     )
   }));
 

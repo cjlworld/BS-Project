@@ -3,7 +3,7 @@ import { useState, useRef } from "react";
 // 注意后端是 http 还是 https
 // 写错了会出现 net::ERR_SSL_PROTOCOL_ERROR
 const prefix: string = "http://101.34.242.157:8000";
-// const prefix: string = "http://localhost:8000";
+// const prefix: string = "http://localhost:8001";
 
 export async function getFetcher<T>(key: string): Promise<T> {
   const resp = await fetch(prefix + key, {
@@ -58,13 +58,13 @@ export function useStreamFetcher<T>(key: string, body: unknown) {
   const [data, setData] = useState<T[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const errorRef = useRef<Error | null>(null);
-  const dataRef = useRef<T[] | null>(null);
+  // const dataRef = useRef<T[] | null>(null);
 
   async function fetchStream() {
     if (isLoading) return;
     setIsLoading(true);
     errorRef.current = null;
-    dataRef.current = null;
+    // dataRef.current = null;
 
     try {
       const response = await fetch(prefix + key, {
@@ -99,8 +99,8 @@ export function useStreamFetcher<T>(key: string, body: unknown) {
         // 逐步解析数据并更新 UI
         try {
           const parsedData = parseJsonLines<T>(result);
-          dataRef.current = parsedData;
-          setData(dataRef.current);
+          // dataRef.current = parsedData;
+          setData(parsedData);
         } catch (e) {
           // 如果数据不完整，继续读取
         }

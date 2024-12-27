@@ -1,6 +1,10 @@
+import re
 import json
+import asyncio
+import random
 import traceback
 from datetime import datetime, timedelta
+from typing import List
 
 from fastapi import FastAPI, Request, Security, Response, Body, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +18,7 @@ from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from loguru import logger
 from openai import OpenAI
+import jieba
 
 import scraper
 from models import User, Good, GoodHistory, Base, Subscription
@@ -170,12 +175,12 @@ def logout(response: Response):
 
 
 @app.post('/api/good/search')
-async def search(search_req: Annotated[GoodSearchRequest, Body()], background_tasks: BackgroundTasks):
+async def search(search_req: Annotated[GoodSearchRequest, Body()]):
     keyword = search_req.keyword
     
     async def search_results_streamer():
         async for result in scraper.search_in_smzdm(keyword):
-            background_tasks.add_task(store_multi_scraped_data, result)
+            asyncio.create_task(store_multi_scraped_data(result))
     
             response = []
             for good in result:
@@ -254,6 +259,49 @@ async def handle_good_detail(req: GoodDetailRequest):
 class GoodHistoryRequest(BaseModel):
     post_id: str
 
+def gen_similar_search_regexp(sentence: str) -> str:
+    # 使用 jieba 和 正则表达式 实现一个简易的 sql 模糊搜索
+    # 返回正则字符串
+    
+    def replace_non_chinese_english_numbers_with_space(text: str) -> str:
+        # 匹配非中文字符、非英文字符和非数字的部分
+        pattern = re.compile(r'[^\u4e00-\u9fa5a-zA-Z0-9]')
+        # 使用 sub 替换为空格
+        text = pattern.sub(' ', text)
+        
+        # 匹配连续多个空格，只保留一个
+        pattern = re.compile(r'\s+')
+        # 使用 sub 替换为单个空格
+        return pattern.sub(' ', text)
+
+    def any_between_words(words: List[str]) -> str:
+        return '(' + '.*'.join(words) + ')'
+
+    # 手动禁用一些词
+    ban_words = [' ', '百亿', '补贴', '今日', '必买', '限地区', '以旧换新', '限', '地区', '京东', '会员']
+    
+    words = jieba.lcut_for_search(replace_non_chinese_english_numbers_with_space(sentence))
+    # 删除 words 的 禁用词
+    words = list(filter(lambda x: x not in ban_words, words))
+
+    regexp = '(?i)' # 大小写模糊
+    patterns = []
+    patterns.append(any_between_words(words))
+    # 如果搜索比较短, 必须所有关键字都符合
+    # 否则允许少一个关键字
+    if len(words) >= 6:
+        for word in words:
+            current_words = list(filter(lambda x: x != word, words))
+            patterns.append(any_between_words(current_words))
+        
+    # 如果 patterns 太长了，裁剪一下
+    if len(patterns) > 10:
+        patterns = random.sample(patterns, 10)
+    
+    regexp += '.*(' + '|'.join(patterns) + ').*'
+    logger.info(f'regexp for {words} is: {regexp}')
+    return regexp
+    
 @app.post('/api/good/history')
 async def handle_good_history(req: GoodHistoryRequest):
     post_id = req.post_id
@@ -267,11 +315,13 @@ async def handle_good_history(req: GoodHistoryRequest):
         
         logger.info(f"good found: {good}")
         
+        # 生成模糊搜索词
+        regexp = gen_similar_search_regexp(good.name)
         # 查找与商品名字相近的历史价格
         history = await session.execute(
             select(GoodHistory, Good)
             .join(Good, GoodHistory.good_id == Good.id)
-            .where(Good.name.like(f"%{good.name}%"))
+            .where(Good.name.regexp_match(regexp))
             .order_by(GoodHistory.time.asc())
         )
         history = history.all()
@@ -285,7 +335,8 @@ async def handle_good_history(req: GoodHistoryRequest):
             {
                 "price": history.price,
                 "time": history.time.strftime("%Y-%m-%d %H:%M:%S"),
-                "post_id": good.post_id
+                "post_id": good.post_id,
+                "name": good.name
             }
             for history, good in history
         ])
