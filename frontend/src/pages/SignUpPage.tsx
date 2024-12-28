@@ -89,7 +89,7 @@ function SignUpCard() {
             {isMutating ? '注册中...' : '启动！'}
           </button>
         </div>
-        {error && <p className="text-red-500">注册失败: {error.message}</p>}
+        {error && <p className="text-red-500">注册失败: 格式错误</p>}
         {isSuccess && <p className="text-green-500">注册成功！即将跳转到登录页</p>}
       </div>
     </div>
